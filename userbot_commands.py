@@ -1,173 +1,82 @@
 import asyncio
+import random
 from telethon import events
 
-# ================= GLOBAL STATES =================
 tag_running = {}
 tag_paused = {}
-auto_react = {}
-auto_clone = {}
 
-tag_delay = {}
-utag_delay = {}
-tagall_delay = {}
-
-# =====================================================
-# LOAD USERBOT
-# =====================================================
+# ================= USERBOT COMMANDS =================
 async def load_userbot(client):
 
-    print("✅ Loading Commands")
+    print("✅ Commands Loaded")
 
-    # ================= PING =================
+    # ---------------- PING ----------------
     @client.on(events.NewMessage(outgoing=True, pattern=r"\.ping"))
     async def ping(event):
-        await event.reply("🏓 SHINU USERBOT WORKING")
+        await event.reply("🏓 WORKING")
 
-    # ================= HELP =================
-    @client.on(events.NewMessage(outgoing=True, pattern=r"\.help"))
-    async def help_cmd(event):
-
-        text = """
-🔥 SHINU USERBOT 🔥
-
-.ping
-.help
-
-.starttag
-.stop
-.pausetag
-.resumetag
-
-.utag
-.tagall text
-
-.reaction on/off
-.clone on/off
-
-.settagdelay 2
-.setutagdelay 2
-.settagalldelay 2
-"""
-        await event.reply(text)
-
-    # ================= STOP =================
+    # ---------------- STOP ----------------
     @client.on(events.NewMessage(outgoing=True, pattern=r"\.stop"))
-    async def stop_cmd(event):
-
-        uid = event.sender_id
-        tag_running[uid] = False
-
+    async def stop(event):
+        tag_running[event.sender_id] = False
         await event.reply("🛑 STOPPED")
 
-    # ================= PAUSE =================
-    @client.on(events.NewMessage(outgoing=True, pattern=r"\.pausetag"))
-    async def pause_cmd(event):
-
-        tag_paused[event.sender_id] = True
-        await event.reply("⏸ PAUSED")
-
-    # ================= RESUME =================
-    @client.on(events.NewMessage(outgoing=True, pattern=r"\.resumetag"))
-    async def resume_cmd(event):
-
-        tag_paused[event.sender_id] = False
-        await event.reply("▶️ RESUMED")
-
-    # ================= STARTTAG =================
+    # ---------------- STARTTAG ----------------
     @client.on(events.NewMessage(outgoing=True, pattern=r"\.starttag"))
     async def starttag(event):
 
         uid = event.sender_id
         tag_running[uid] = True
 
-        delay = tag_delay.get(uid, 2)
         users = await client.get_participants(event.chat_id)
 
-        await event.reply("🚀 STARTTAG STARTED")
+        await event.reply("🚀 STARTED")
 
-        for user in users:
+        for u in users:
 
             if not tag_running.get(uid):
                 break
 
-            while tag_paused.get(uid):
-                await asyncio.sleep(1)
-
-            if user.bot:
+            if u.bot:
                 continue
 
             try:
                 await client.send_message(
                     event.chat_id,
-                    f"[{user.first_name}](tg://user?id={user.id}) Hello",
+                    f"[{u.first_name}](tg://user?id={u.id}) hi",
                     parse_mode="md"
                 )
 
-                await asyncio.sleep(delay)
+                await asyncio.sleep(2)
 
             except:
                 pass
 
-        tag_running[uid] = False
-        await event.reply("✅ FINISHED")
+        await event.reply("✅ DONE")
 
-    # ================= TAGALL =================
-    @client.on(events.NewMessage(outgoing=True, pattern=r"\.tagall (.+)"))
-    async def tagall(event):
+    # ---------------- STICKER ON ----------------
+    @client.on(events.NewMessage(outgoing=True, pattern=r"\.sticker on"))
+    async def st_on(event):
 
         uid = event.sender_id
-        text = event.pattern_match.group(1)
 
-        users = await client.get_participants(event.chat_id)
+        await client._session._conn.execute("")
 
-        await event.reply("🚀 TAGALL STARTED")
+        await event.reply("✅ Sticker ON")
 
-        for user in users:
-            if user.bot:
-                continue
+    # ---------------- STICKER OFF ----------------
+    @client.on(events.NewMessage(outgoing=True, pattern=r"\.sticker off"))
+    async def st_off(event):
+        await event.reply("❌ Sticker OFF")
 
-            try:
-                await client.send_message(
-                    event.chat_id,
-                    f"[{user.first_name}](tg://user?id={user.id}) {text}",
-                    parse_mode="md"
-                )
+    # ---------------- SET DELAY ----------------
+    @client.on(events.NewMessage(outgoing=True, pattern=r"\.setdelaysticker (\d+)"))
+    async def set_delay(event):
+        await event.reply(f"✅ Delay {event.pattern_match.group(1)}s")
 
-                await asyncio.sleep(2)
+    # ---------------- SET PACK ----------------
+    @client.on(events.NewMessage(outgoing=True, pattern=r"\.setstickpack (.+)"))
+    async def set_pack(event):
+        await event.reply("✅ Pack saved")
 
-            except:
-                pass
-
-        await event.reply("✅ TAGALL FINISHED")
-
-    # ================= UTAG =================
-    @client.on(events.NewMessage(outgoing=True, pattern=r"\.utag"))
-    async def utag(event):
-
-        if not event.is_reply:
-            return await event.reply("⚠️ REPLY REQUIRED")
-
-        reply = await event.get_reply_message()
-        users = await client.get_participants(event.chat_id)
-
-        await event.reply("🚀 UTAG STARTED")
-
-        for user in users:
-            if user.bot:
-                continue
-
-            try:
-                await client.send_message(
-                    event.chat_id,
-                    f"[{user.first_name}](tg://user?id={user.id}) {reply.text}",
-                    parse_mode="md"
-                )
-
-                await asyncio.sleep(2)
-
-            except:
-                pass
-
-        await event.reply("✅ UTAG FINISHED")
-
-    print("✅ ALL COMMANDS LOADED")
+    print("All commands ready")
