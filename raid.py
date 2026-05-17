@@ -1,12 +1,10 @@
 import json
-import asyncio
 from pyrogram import filters
-from pyrogram.enums import ChatAction
-from main import app
+from core import app
 
 DB_FILE = "db.json"
 
-# ================= LOAD DB =================
+# ================= DB =================
 def load_db():
     try:
         with open(DB_FILE, "r") as f:
@@ -20,12 +18,12 @@ def save_db(data):
 
 db = load_db()
 
-# ================= ADD USER =================
+# ================= RRAID (ADD USER) =================
 @app.on_message(filters.me & filters.command("rraid", prefixes="!"))
-async def add_user(_, msg):
+async def rraid(_, msg):
 
     if len(msg.command) < 2:
-        return await msg.reply("Usage: !rraid @user")
+        return await msg.reply("Usage: !rraid @username or user_id")
 
     user = msg.command[1].replace("@", "")
 
@@ -34,14 +32,14 @@ async def add_user(_, msg):
         save_db(db)
         await msg.reply(f"✅ Added: {user}")
     else:
-        await msg.reply("Already exists")
+        await msg.reply("⚠️ Already exists")
 
-# ================= REMOVE USER =================
+# ================= DRAID (REMOVE USER) =================
 @app.on_message(filters.me & filters.command("draid", prefixes="!"))
-async def remove_user(_, msg):
+async def draid(_, msg):
 
     if len(msg.command) < 2:
-        return await msg.reply("Usage: !draid @user")
+        return await msg.reply("Usage: !draid @username")
 
     user = msg.command[1].replace("@", "")
 
@@ -52,7 +50,7 @@ async def remove_user(_, msg):
     else:
         await msg.reply("Not found")
 
-# ================= COUNT =================
+# ================= COUNT SET =================
 @app.on_message(filters.me & filters.command("count", prefixes="!"))
 async def set_count(_, msg):
 
@@ -66,26 +64,16 @@ async def set_count(_, msg):
     except:
         await msg.reply("Invalid number")
 
-# ================= SAFE AUTO REPLY =================
-@app.on_message(filters.group & ~filters.me)
-async def auto_reply(client, msg):
+# ================= SHOW USERS =================
+@app.on_message(filters.me & filters.command("list", prefixes="!"))
+async def list_users(_, msg):
 
-    if not msg.from_user:
-        return
+    users = db.get("users", [])
 
-    user_id = str(msg.from_user.id)
-    username = msg.from_user.username or ""
+    if not users:
+        return await msg.reply("No users added")
 
-    if user_id not in db["users"] and username not in db["users"]:
-        return
+    text = "📌 RAID USERS:\n\n"
+    text += "\n".join([f"- {u}" for u in users])
 
-    for _ in range(db["count"]):
-
-        try:
-            await client.send_chat_action(msg.chat.id, ChatAction.TYPING)
-            await asyncio.sleep(2)
-
-            await msg.reply("📢 Automated reply enabled")
-
-        except:
-            pass
+    await msg.reply(text)
