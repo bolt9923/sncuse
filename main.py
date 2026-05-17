@@ -1,6 +1,3 @@
-from userbot_commands import load_userbot
-from sticker import load_stickers
-
 import asyncio
 import os
 import re
@@ -10,7 +7,9 @@ from telethon.sessions import StringSession
 from telethon.errors import SessionPasswordNeededError
 
 from motor.motor_asyncio import AsyncIOMotorClient
+
 from userbot_commands import load_userbot
+from sticker import load_stickers
 
 # ================= CONFIG =================
 API_ID = int(os.environ.get("API_ID", "0"))
@@ -41,9 +40,7 @@ async def start(event):
 # ================= LOGIN =================
 @bot.on(events.NewMessage(pattern="/login"))
 async def login(event):
-
     user_state[event.sender_id] = {"step": "phone"}
-
     await event.reply("📱 Phone number bhejo (+91...)")
 
 # ================= STATUS =================
@@ -125,11 +122,10 @@ async def handler(event):
 
         await event.reply("✅ LOGIN SUCCESS")
 
+        # ================= FIXED LOAD =================
         await load_userbot(client)
         load_stickers(client)
-        
-        await load_userbot(client)
-        load_stickers(client)
+
         del user_state[uid]
 
     # ---------------- PASSWORD ----------------
@@ -154,12 +150,11 @@ async def handler(event):
         )
 
         await event.reply("✅ 2FA LOGIN SUCCESS")
-        
+
+        # ================= FIXED LOAD =================
         await load_userbot(client)
         load_stickers(client)
-       
-        await load_userbot(client)
-        load_stickers(client)
+
         del user_state[uid]
 
 # ================= AUTO RESTORE =================
@@ -175,6 +170,7 @@ async def load_all():
             await client.start()
 
             await load_userbot(client)
+            load_stickers(client)
 
             print("✅ Restored:", user["user_id"])
 
