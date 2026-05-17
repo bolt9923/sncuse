@@ -56,7 +56,6 @@ text = """
 .sticker off
 .setstickerdelay 2
 .setstickerpack (reply sticker)
-"""
 
     # ================= STOP =================
     @client.on(events.NewMessage(outgoing=True, pattern=r"\.stop"))
