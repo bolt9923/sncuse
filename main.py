@@ -1,4 +1,3 @@
-import raid
 import asyncio
 import os
 import re
@@ -23,13 +22,13 @@ mongo = AsyncIOMotorClient(MONGO_URL)
 db = mongo["userbot"]
 users = db["users"]
 
-# ================= BOT =================
+# ================= BOT CLIENT =================
 bot = TelegramClient("bot", API_ID, API_HASH)
 
 # ================= STATE =================
 user_state = {}
 
-# ================= PHONE VALID =================
+# ================= VALID PHONE =================
 def is_valid(phone):
     return bool(re.match(r"^\+[1-9]\d{7,14}$", phone))
 
@@ -61,7 +60,7 @@ Step: {state.get("step")}
 Logged: {'Yes' if state.get("client") else 'No'}
 """)
 
-# ================= HANDLER =================
+# ================= CORE HANDLER =================
 @bot.on(events.NewMessage)
 async def handler(event):
 
@@ -77,7 +76,7 @@ async def handler(event):
     if state["step"] == "phone":
 
         if not is_valid(text):
-            return await event.reply("❌ Invalid number")
+            return await event.reply("❌ Invalid number (+91...)")
 
         client = TelegramClient(StringSession(), API_ID, API_HASH)
         await client.connect()
@@ -92,7 +91,7 @@ async def handler(event):
             await event.reply("📩 OTP bhejo")
 
         except Exception as e:
-            await event.reply(str(e))
+            await event.reply(f"❌ Error:\n{e}")
 
     # ---------------- OTP ----------------
     elif state["step"] == "otp":
@@ -123,7 +122,7 @@ async def handler(event):
 
         await event.reply("✅ LOGIN SUCCESS")
 
-        # ================= FIXED LOAD =================
+        # ================= SAFE LOAD =================
         await load_userbot(client)
         load_stickers(client)
 
@@ -144,15 +143,13 @@ async def handler(event):
 
         await users.update_one(
             {"user_id": uid},
-            {"$set": {
-                "session": session
-            }},
+            {"$set": {"session": session}},
             upsert=True
         )
 
         await event.reply("✅ 2FA LOGIN SUCCESS")
 
-        # ================= FIXED LOAD =================
+        # ================= SAFE LOAD =================
         await load_userbot(client)
         load_stickers(client)
 
@@ -170,6 +167,7 @@ async def load_all():
 
             await client.start()
 
+            # load modules
             await load_userbot(client)
             load_stickers(client)
 
