@@ -1,3 +1,6 @@
+from userbot_commands import load_userbot
+from sticker import load_stickers
+
 import asyncio
 import os
 import re
@@ -123,6 +126,9 @@ async def handler(event):
         await event.reply("✅ LOGIN SUCCESS")
 
         await load_userbot(client)
+        load_stickers(client)
+        
+        await load_userbot(client)
 
         del user_state[uid]
 
@@ -148,9 +154,12 @@ async def handler(event):
         )
 
         await event.reply("✅ 2FA LOGIN SUCCESS")
-
+        
         await load_userbot(client)
-
+        load_stickers(client)
+       
+        await load_userbot(client)
+        load_stickers(client)
         del user_state[uid]
 
 # ================= AUTO RESTORE =================
