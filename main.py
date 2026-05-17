@@ -2,6 +2,16 @@ import asyncio
 import os
 import re
 
+from core import app
+
+import raid
+import userbot_commands
+import sticker
+
+print("Bot started")
+
+app.run()
+
 from telethon import TelegramClient, events
 from telethon.sessions import StringSession
 from telethon.errors import SessionPasswordNeededError
