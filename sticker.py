@@ -2,7 +2,7 @@ import asyncio
 import random
 from telethon import events
 from telethon.tl.functions.messages import GetStickerSetRequest
-from telethon.tl.types import InputStickerSetID
+from telethon.tl.types import InputStickerSetShortName
 
 sticker_on = {}
 sticker_delay = {}
@@ -12,41 +12,35 @@ def load_stickers(client):
 
     print("🟢 STICKER SYSTEM LOADED")
 
-    # ON
+    # ================= ON =================
     @client.on(events.NewMessage(outgoing=True, pattern=r"\.sticker on"))
     async def on(event):
         sticker_on[event.sender_id] = True
         await event.reply("✅ STICKER ON")
 
-    # OFF
+    # ================= OFF =================
     @client.on(events.NewMessage(outgoing=True, pattern=r"\.sticker off"))
     async def off(event):
         sticker_on[event.sender_id] = False
         await event.reply("❌ STICKER OFF")
 
-    # DELAY
+    # ================= DELAY =================
     @client.on(events.NewMessage(outgoing=True, pattern=r"\.setstickerdelay (\d+)"))
     async def delay(event):
         sticker_delay[event.sender_id] = int(event.pattern_match.group(1))
         await event.reply("⏱ DELAY SET")
 
-    # SET PACK (reply sticker)
-    @client.on(events.NewMessage(outgoing=True, pattern=r"\.setstickerpack"))
-    async def pack(event):
+    # ================= SET PACK (NO REPLY NEEDED) =================
+    @client.on(events.NewMessage(outgoing=True, pattern=r"\.setstickerpack (\S+)"))
+    async def set_pack(event):
 
-        if not event.is_reply:
-            return await event.reply("⚠️ Reply to sticker")
+        pack_name = event.pattern_match.group(1)
 
-        reply = await event.get_reply_message()
+        sticker_pack[event.sender_id] = pack_name
 
-        if not reply.sticker:
-            return await event.reply("❌ Not a sticker")
+        await event.reply(f"📦 PACK SAVED:\n{pack_name}")
 
-        sticker_pack[event.sender_id] = reply.sticker.attributes[1].document_id
-
-        await event.reply("📦 PACK SAVED")
-
-    # AUTO STICKER
+    # ================= AUTO STICKER =================
     @client.on(events.NewMessage)
     async def auto(event):
 
@@ -63,18 +57,18 @@ def load_stickers(client):
         try:
             await asyncio.sleep(sticker_delay.get(uid, 2))
 
-            stickers = await client(GetStickerSetRequest(
-                stickerset=InputStickerSetID(id=pack, access_hash=0)
+            result = await client(GetStickerSetRequest(
+                stickerset=InputStickerSetShortName(pack)
             ))
 
-            if not stickers.documents:
+            if not result.documents:
                 return
 
-            st = random.choice(stickers.documents)
+            sticker = random.choice(result.documents)
 
-            await client.send_file(event.chat_id, st)
+            await client.send_file(event.chat_id, sticker)
 
         except Exception as e:
-            print("ERROR:", e)
+            print("STICKER ERROR:", e)
 
     print("🔥 STICKER READY")
