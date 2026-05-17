@@ -1,9 +1,10 @@
 import asyncio
 import random
+from telethon import events
 from telethon.tl.functions.messages import GetStickerSetRequest
 from telethon.tl.types import InputStickerSetShortName
 
-# ================= STATES =================
+# ================= STATE =================
 sticker_on = {}
 sticker_delay = {}
 sticker_pack = {}
@@ -12,21 +13,19 @@ sticker_task = {}
 # ================= LOAD =================
 def load_stickers(client):
 
-    print("🟢 STICKER LOOP SYSTEM LOADED")
+    print("🟢 STICKER SYSTEM LOADED")
 
     # ================= ON =================
     @client.on(events.NewMessage(outgoing=True, pattern=r"\.sticker on"))
     async def on(event):
 
         uid = event.sender_id
-
         sticker_on[uid] = True
 
-        await event.reply("✅ STICKER LOOP ON")
+        await event.reply("✅ STICKER ON")
 
-        # start loop task
+        # start loop only once
         if uid not in sticker_task or sticker_task[uid].done():
-
             sticker_task[uid] = asyncio.create_task(
                 sticker_loop(client, event.chat_id, uid)
             )
@@ -36,23 +35,19 @@ def load_stickers(client):
     async def off(event):
 
         uid = event.sender_id
-
         sticker_on[uid] = False
 
-        await event.reply("❌ STICKER LOOP OFF")
-
-        # cancel task
         task = sticker_task.get(uid)
-
         if task:
             task.cancel()
+
+        await event.reply("❌ STICKER OFF")
 
     # ================= DELAY =================
     @client.on(events.NewMessage(outgoing=True, pattern=r"\.setstickerdelay (\d+)"))
     async def delay(event):
 
         sticker_delay[event.sender_id] = int(event.pattern_match.group(1))
-
         await event.reply(f"⏱ DELAY SET: {sticker_delay[event.sender_id]}s")
 
     # ================= PACK =================
@@ -61,7 +56,7 @@ def load_stickers(client):
 
         raw = event.pattern_match.group(1)
 
-        pack_name = raw.split("t.me/addstickers/")[-1].strip("/")
+        pack_name = raw.split("/")[-1].strip()
 
         try:
             result = await client(GetStickerSetRequest(
@@ -69,8 +64,8 @@ def load_stickers(client):
                 hash=0
             ))
 
-            if not result.documents:
-                return await event.reply("❌ Invalid Pack")
+            if not result or not result.documents:
+                return await event.reply("❌ Invalid Sticker Pack")
 
             sticker_pack[event.sender_id] = pack_name
 
@@ -79,13 +74,11 @@ def load_stickers(client):
         except Exception as e:
             await event.reply(f"❌ ERROR:\n{e}")
 
-    print("🔥 STICKER LOOP READY")
+    print("🔥 STICKER SYSTEM READY")
 
 
-# ================= BACKGROUND LOOP =================
+# ================= LOOP ENGINE =================
 async def sticker_loop(client, chat_id, uid):
-
-    print(f"🔁 LOOP STARTED FOR {uid}")
 
     while True:
 
@@ -93,7 +86,6 @@ async def sticker_loop(client, chat_id, uid):
             break
 
         pack = sticker_pack.get(uid)
-
         if not pack:
             await asyncio.sleep(2)
             continue
@@ -111,6 +103,6 @@ async def sticker_loop(client, chat_id, uid):
                 await client.send_file(chat_id, sticker)
 
         except Exception as e:
-            print("LOOP ERROR:", e)
+            print("STICKER LOOP ERROR:", e)
 
         await asyncio.sleep(delay)
