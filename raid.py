@@ -17,13 +17,20 @@ def save_db(data):
 
 db = load_db()
 
-# ================= ADD =================
+# ================= TEST =================
+@app.on_message(filters.me & filters.command("test", prefixes="!"))
+async def test(_, msg):
+    await msg.reply("✅ RAID MODULE WORKING")
+
+# ================= ADD USER =================
 @app.on_message(filters.me & filters.command("rraid", prefixes="!"))
 async def rraid(_, msg):
+
     if len(msg.command) < 2:
         return await msg.reply("Usage: !rraid @user")
 
     user = msg.command[1].replace("@", "")
+
     if user not in db["users"]:
         db["users"].append(user)
         save_db(db)
@@ -41,20 +48,18 @@ async def replyraid(_, msg):
     if len(msg.command) < 2:
         return await msg.reply("Usage: !replyraid text")
 
-    text = msg.text.split(" ", 1)[1]
+    text = msg.text.split(" ", 1)
 
-    target_msg = msg.reply_to_message
+    if len(text) < 2:
+        return await msg.reply("⚠️ Text missing")
 
-    for _ in range(db["count"]):
+    text = text[1]
+
+    for _ in range(db.get("count", 1)):
 
         try:
-            await target_msg.reply(text)
+            await msg.reply_to_message.reply(text)
         except:
             pass
 
     await msg.reply("✅ Reply Raid Done")
-
-# ================= TEST =================
-@app.on_message(filters.me & filters.command("test", prefixes="!"))
-async def test(_, msg):
-    await msg.reply("RAID MODULE WORKING ✅")
