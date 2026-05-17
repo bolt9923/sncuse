@@ -1,8 +1,6 @@
 import asyncio
 import random
 from telethon import events
-from telethon.tl.functions.messages import GetStickerSetRequest
-from telethon.tl.types import InputStickerSetShortName
 
 # ================= STATES =================
 sticker_on = {}
@@ -14,13 +12,13 @@ def load_stickers(client):
 
     print("🟢 STICKER SYSTEM LOADED")
 
-    # ================= ON =================
+    # ================= STICKER ON =================
     @client.on(events.NewMessage(outgoing=True, pattern=r"\.sticker on"))
     async def on(event):
         sticker_on[event.sender_id] = True
         await event.reply("✅ STICKER ON")
 
-    # ================= OFF =================
+    # ================= STICKER OFF =================
     @client.on(events.NewMessage(outgoing=True, pattern=r"\.sticker off"))
     async def off(event):
         sticker_on[event.sender_id] = False
@@ -32,21 +30,29 @@ def load_stickers(client):
         sticker_delay[event.sender_id] = int(event.pattern_match.group(1))
         await event.reply(f"⏱ DELAY SET: {sticker_delay[event.sender_id]}s")
 
-    # ================= SET PACK =================
-    @client.on(events.NewMessage(outgoing=True, pattern=r"\.setstickerpack (\S+)"))
+    # ================= SET PACK (REPLY BASED FIXED) =================
+    @client.on(events.NewMessage(outgoing=True, pattern=r"\.setstickerpack"))
     async def set_pack(event):
 
-        pack_name = event.pattern_match.group(1)
+        if not event.is_reply:
+            return await event.reply("⚠️ Reply to a sticker from pack")
+
+        reply = await event.get_reply_message()
+
+        if not reply.sticker:
+            return await event.reply("❌ This is not a sticker")
 
         try:
-            # verify sticker pack exists
-            result = await client(GetStickerSetRequest(
-                stickerset=InputStickerSetShortName(pack_name),
-                hash=0
-            ))
+            sticker = reply.sticker
 
-            if not result or not result.documents:
-                return await event.reply("❌ Invalid Sticker Pack")
+            # SAFE PACK EXTRACTION
+            if not hasattr(sticker, "stickerset") or not sticker.stickerset:
+                return await event.reply("❌ Cannot detect sticker set")
+
+            pack_name = sticker.stickerset.short_name
+
+            if not pack_name:
+                return await event.reply("❌ Invalid sticker pack")
 
             sticker_pack[event.sender_id] = pack_name
 
@@ -79,12 +85,10 @@ def load_stickers(client):
         try:
             await asyncio.sleep(delay)
 
-            result = await client(GetStickerSetRequest(
-                stickerset=InputStickerSetShortName(pack),
-                hash=0
-            ))
+            # get sticker set safely
+            result = await client.get_sticker_set(pack)
 
-            if not result.documents:
+            if not result or not result.documents:
                 return
 
             sticker = random.choice(result.documents)
