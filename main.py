@@ -2,16 +2,6 @@ import asyncio
 import os
 import re
 
-from core import app
-
-import raid
-import userbot_commands
-import sticker
-
-print("Bot started")
-
-app.run()
-
 from telethon import TelegramClient, events
 from telethon.sessions import StringSession
 from telethon.errors import SessionPasswordNeededError
@@ -22,10 +12,10 @@ from userbot_commands import load_userbot
 from sticker import load_stickers
 
 # ================= CONFIG =================
-API_ID = int(os.environ.get("API_ID", "0"))
-API_HASH = os.environ.get("API_HASH", "")
-BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
-MONGO_URL = os.environ.get("MONGO_URL")
+API_ID = int(os.environ["API_ID"])
+API_HASH = os.environ["API_HASH"]
+BOT_TOKEN = os.environ["BOT_TOKEN"]
+MONGO_URL = os.environ["MONGO_URL"]
 
 # ================= MONGO =================
 mongo = AsyncIOMotorClient(MONGO_URL)
@@ -70,7 +60,7 @@ Step: {state.get("step")}
 Logged: {'Yes' if state.get("client") else 'No'}
 """)
 
-# ================= CORE HANDLER =================
+# ================= HANDLER =================
 @bot.on(events.NewMessage)
 async def handler(event):
 
@@ -86,7 +76,7 @@ async def handler(event):
     if state["step"] == "phone":
 
         if not is_valid(text):
-            return await event.reply("❌ Invalid number (+91...)")
+            return await event.reply("❌ Invalid number")
 
         client = TelegramClient(StringSession(), API_ID, API_HASH)
         await client.connect()
@@ -101,7 +91,7 @@ async def handler(event):
             await event.reply("📩 OTP bhejo")
 
         except Exception as e:
-            await event.reply(f"❌ Error:\n{e}")
+            await event.reply(str(e))
 
     # ---------------- OTP ----------------
     elif state["step"] == "otp":
@@ -123,16 +113,12 @@ async def handler(event):
 
         await users.update_one(
             {"user_id": uid},
-            {"$set": {
-                "session": session,
-                "sticker_on": False
-            }},
+            {"$set": {"session": session}},
             upsert=True
         )
 
         await event.reply("✅ LOGIN SUCCESS")
 
-        # ================= SAFE LOAD =================
         await load_userbot(client)
         load_stickers(client)
 
@@ -159,7 +145,6 @@ async def handler(event):
 
         await event.reply("✅ 2FA LOGIN SUCCESS")
 
-        # ================= SAFE LOAD =================
         await load_userbot(client)
         load_stickers(client)
 
@@ -177,7 +162,6 @@ async def load_all():
 
             await client.start()
 
-            # load modules
             await load_userbot(client)
             load_stickers(client)
 
