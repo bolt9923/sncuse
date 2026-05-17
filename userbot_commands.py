@@ -27,6 +27,7 @@ async def load_userbot(client):
     async def help_cmd(event):
 
         await event.reply("""
+text = """
 🔥 SHINU USERBOT 🔥
 
 .ping
@@ -40,13 +41,22 @@ async def load_userbot(client):
 .tagall text
 .utag (reply)
 
-.reaction on/off
-.clone on/off
+.reaction on
+.reaction off
+
+.clone on
+.clone off
 
 .settagdelay 2
 .setutagdelay 2
 .settagalldelay 2
-""")
+
+📦 STICKER SYSTEM 🔥
+.sticker on
+.sticker off
+.setstickerdelay 2
+.setstickerpack (reply sticker)
+"""
 
     # ================= STOP =================
     @client.on(events.NewMessage(outgoing=True, pattern=r"\.stop"))
