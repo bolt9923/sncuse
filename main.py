@@ -23,9 +23,10 @@ users = db["users"]
 # ================= BOT =================
 bot = TelegramClient("bot", API_ID, API_HASH)
 
+# ================= STATE =================
 user_state = {}
 
-# ================= PHONE CHECK =================
+# ================= VALID PHONE =================
 def is_valid(phone):
     return bool(re.match(r"^\+[1-9]\d{7,14}$", phone))
 
@@ -37,29 +38,33 @@ async def start(event):
 # ================= LOGIN =================
 @bot.on(events.NewMessage(pattern="/login"))
 async def login(event):
-    user_state[event.sender_id] = {"step": "phone"}
-    await event.reply("📱 Phone number send karo")
+
+    user_state[event.sender_id] = {
+        "step": "phone"
+    }
+
+    await event.reply("📱 Phone number bhejo (+91xxxx)")
 
 # ================= STATUS =================
 @bot.on(events.NewMessage(pattern="/status"))
 async def status(event):
 
     uid = event.sender_id
-    data = user_state.get(uid)
+    state = user_state.get(uid)
 
-    if not data:
+    if not state:
         return await event.reply("❌ Not logged in")
 
-    client = data.get("client")
+    client = state.get("client")
 
     await event.reply(f"""
 📊 STATUS
 
-Step: {data.get("step")}
+Step: {state.get("step")}
 Logged: {'Yes' if client else 'No'}
 """)
 
-# ================= HANDLER =================
+# ================= MAIN HANDLER =================
 @bot.on(events.NewMessage)
 async def handler(event):
 
@@ -90,25 +95,27 @@ async def handler(event):
             await event.reply("📩 OTP send karo")
 
         except Exception as e:
-            await event.reply(str(e))
+            await event.reply(f"❌ Error:\n{e}")
 
     # ---------------- OTP ----------------
     elif state["step"] == "otp":
 
         client = state["client"]
+        phone = state["phone"]
 
         try:
-            await client.sign_in(state["phone"], text)
+            await client.sign_in(phone, text)
 
         except SessionPasswordNeededError:
             state["step"] = "password"
             return await event.reply("🔐 2FA password bhejo")
 
         except Exception as e:
-            return await event.reply(str(e))
+            return await event.reply(f"❌ OTP Error:\n{e}")
 
         session = client.session.save()
 
+        # SAVE TO MONGO
         await users.update_one(
             {"user_id": uid},
             {"$set": {
@@ -122,9 +129,8 @@ async def handler(event):
 
         await event.reply("✅ LOGIN SUCCESS")
 
+        # LOAD USERBOT
         await load_userbot(client)
-
-        await client.run_until_disconnected()
 
         del user_state[uid]
 
@@ -137,15 +143,14 @@ async def handler(event):
             await client.sign_in(password=text)
 
         except Exception as e:
-            return await event.reply(str(e))
+            return await event.reply(f"❌ Wrong password:\n{e}")
 
         session = client.session.save()
 
         await users.update_one(
             {"user_id": uid},
             {"$set": {
-                "session": session,
-                "sticker_on": False
+                "session": session
             }},
             upsert=True
         )
@@ -154,34 +159,37 @@ async def handler(event):
 
         await load_userbot(client)
 
-        await client.run_until_disconnected()
-
         del user_state[uid]
 
-# ================= RESTORE SESSIONS =================
-async def load_all():
+# ================= AUTO RESTORE =================
+async def load_all_sessions():
 
     async for user in users.find():
 
-        session = user["session"]
+        try:
+            session = user["session"]
 
-        client = TelegramClient(StringSession(session), API_ID, API_HASH)
+            client = TelegramClient(StringSession(session), API_ID, API_HASH)
 
-        await client.start()
+            await client.start()
 
-        await load_userbot(client)
+            await load_userbot(client)
 
-        print("Restored:", user["user_id"])
+            print("✅ Restored:", user["user_id"])
+
+        except Exception as e:
+            print("❌ Restore error:", e)
 
 # ================= RUN =================
 async def main():
 
     await bot.start(bot_token=BOT_TOKEN)
 
-    print("Bot running...")
+    print("🚀 Bot Running...")
 
-    await load_all()
+    await load_all_sessions()
 
     await bot.run_until_disconnected()
 
-asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())
