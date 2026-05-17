@@ -28,7 +28,7 @@ async def load_userbot(client):
 
         await event.reply("""
 text = """
-🔥 SHINU USERBOT 🔥
+ SHINU USERBOT 
 
 .ping
 .help
@@ -51,7 +51,7 @@ text = """
 .setutagdelay 2
 .settagalldelay 2
 
-📦 STICKER SYSTEM 🔥
+ STICKER SYSTEM 
 .sticker on
 .sticker off
 .setstickerdelay 2
