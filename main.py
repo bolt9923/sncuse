@@ -22,13 +22,11 @@ mongo = AsyncIOMotorClient(MONGO_URL)
 db = mongo["userbot"]
 users = db["users"]
 
-# ================= BOT CLIENT =================
+# ================= BOT CLIENT (FIXED) =================
 bot = TelegramClient("bot", API_ID, API_HASH)
 
-# ================= STATE =================
 user_state = {}
 
-# ================= VALID PHONE =================
 def is_valid(phone):
     return bool(re.match(r"^\+[1-9]\d{7,14}$", phone))
 
@@ -81,17 +79,13 @@ async def handler(event):
         client = TelegramClient(StringSession(), API_ID, API_HASH)
         await client.connect()
 
-        try:
-            await client.send_code_request(text)
+        await client.send_code_request(text)
 
-            state["phone"] = text
-            state["client"] = client
-            state["step"] = "otp"
+        state["phone"] = text
+        state["client"] = client
+        state["step"] = "otp"
 
-            await event.reply("📩 OTP bhejo")
-
-        except Exception as e:
-            await event.reply(str(e))
+        await event.reply("📩 OTP bhejo")
 
     # ---------------- OTP ----------------
     elif state["step"] == "otp":
@@ -105,9 +99,6 @@ async def handler(event):
         except SessionPasswordNeededError:
             state["step"] = "password"
             return await event.reply("🔐 2FA password bhejo")
-
-        except Exception as e:
-            return await event.reply(f"❌ OTP Error:\n{e}")
 
         session = client.session.save()
 
@@ -156,7 +147,9 @@ async def load_all():
     async for user in users.find():
 
         try:
-            session = user["session"]
+            session = user.get("session")
+            if not session:
+                continue
 
             client = TelegramClient(StringSession(session), API_ID, API_HASH)
 
