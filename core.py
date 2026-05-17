@@ -1,19 +1,18 @@
-from pyrogram import Client
-
 import os
-from pyrogram import Client
+from telethon import TelegramClient
+from telethon.sessions import StringSession
 
-API_ID = int(os.environ.get("API_ID", 0))
-API_HASH = os.environ.get("API_HASH", "")
+API_ID = int(os.environ["API_ID"])
+API_HASH = os.environ["API_HASH"]
+BOT_TOKEN = os.environ["BOT_TOKEN"]
 
-app = Client(
-    "raid_userbot",
-    api_id=API_ID,
-    api_hash=API_HASH
-)
+# ================= BOT =================
+bot = TelegramClient("bot", API_ID, API_HASH)
 
-app = Client(
-    "raid_userbot",
-    api_id=API_ID,
-    api_hash=API_HASH
-)
+# ================= USERBOT HOLDER =================
+userbot = None
+
+def create_userbot(session: str):
+    global userbot
+    userbot = TelegramClient(StringSession(session), API_ID, API_HASH)
+    return userbot
