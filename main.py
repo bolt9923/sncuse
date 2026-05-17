@@ -129,7 +129,7 @@ async def handler(event):
         load_stickers(client)
         
         await load_userbot(client)
-
+        load_stickers(client)
         del user_state[uid]
 
     # ---------------- PASSWORD ----------------
