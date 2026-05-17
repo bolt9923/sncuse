@@ -1,3 +1,6 @@
+from telethon.tl.functions.messages import GetStickerSetRequest
+from telethon.tl.types import InputStickerSetShortName
+
 import asyncio
 import random
 from telethon import events
