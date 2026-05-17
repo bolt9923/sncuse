@@ -9,43 +9,44 @@ sticker_on = {}
 sticker_delay = {}
 sticker_pack = {}
 
-# ================= LOAD SYSTEM =================
+# ================= LOAD FUNCTION =================
 def load_stickers(client):
 
     print("🟢 STICKER SYSTEM LOADED")
 
-    # ================= STICKER ON =================
+    # ================= ON =================
     @client.on(events.NewMessage(outgoing=True, pattern=r"\.sticker on"))
     async def on(event):
         sticker_on[event.sender_id] = True
         await event.reply("✅ STICKER ON")
 
-    # ================= STICKER OFF =================
+    # ================= OFF =================
     @client.on(events.NewMessage(outgoing=True, pattern=r"\.sticker off"))
     async def off(event):
         sticker_on[event.sender_id] = False
         await event.reply("❌ STICKER OFF")
 
-    # ================= SET DELAY =================
+    # ================= DELAY =================
     @client.on(events.NewMessage(outgoing=True, pattern=r"\.setstickerdelay (\d+)"))
     async def set_delay(event):
         sticker_delay[event.sender_id] = int(event.pattern_match.group(1))
         await event.reply(f"⏱ DELAY SET: {sticker_delay[event.sender_id]}s")
 
-    # ================= SET PACK (USERNAME) =================
+    # ================= SET PACK =================
     @client.on(events.NewMessage(outgoing=True, pattern=r"\.setstickerpack (\S+)"))
     async def set_pack(event):
 
         pack_name = event.pattern_match.group(1)
 
         try:
-            # verify pack exists
+            # verify sticker pack exists
             result = await client(GetStickerSetRequest(
-                stickerset=InputStickerSetShortName(pack_name)
+                stickerset=InputStickerSetShortName(pack_name),
+                hash=0
             ))
 
             if not result or not result.documents:
-                return await event.reply("❌ Invalid sticker pack")
+                return await event.reply("❌ Invalid Sticker Pack")
 
             sticker_pack[event.sender_id] = pack_name
 
@@ -79,7 +80,8 @@ def load_stickers(client):
             await asyncio.sleep(delay)
 
             result = await client(GetStickerSetRequest(
-                stickerset=InputStickerSetShortName(pack)
+                stickerset=InputStickerSetShortName(pack),
+                hash=0
             ))
 
             if not result.documents:
@@ -92,4 +94,4 @@ def load_stickers(client):
         except Exception as e:
             print("STICKER ERROR:", e)
 
-    print("🔥 STICKER READY FULLY WORKING")
+    print("🔥 STICKER SYSTEM READY (100% WORKING)")
