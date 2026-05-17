@@ -1,10 +1,9 @@
-import json
-from pyrogram import filters
 from core import app
+from pyrogram import filters
+import json
 
 DB_FILE = "db.json"
 
-# ================= DB =================
 def load_db():
     try:
         with open(DB_FILE, "r") as f:
@@ -18,62 +17,44 @@ def save_db(data):
 
 db = load_db()
 
-# ================= RRAID (ADD USER) =================
+# ================= ADD =================
 @app.on_message(filters.me & filters.command("rraid", prefixes="!"))
 async def rraid(_, msg):
-
     if len(msg.command) < 2:
-        return await msg.reply("Usage: !rraid @username or user_id")
+        return await msg.reply("Usage: !rraid @user")
 
     user = msg.command[1].replace("@", "")
-
     if user not in db["users"]:
         db["users"].append(user)
         save_db(db)
-        await msg.reply(f"✅ Added: {user}")
+        await msg.reply("✅ Added")
     else:
-        await msg.reply("⚠️ Already exists")
+        await msg.reply("Already exists")
 
-# ================= DRAID (REMOVE USER) =================
-@app.on_message(filters.me & filters.command("draid", prefixes="!"))
-async def draid(_, msg):
+# ================= REPLY RAID =================
+@app.on_message(filters.me & filters.command("replyraid", prefixes="!"))
+async def replyraid(_, msg):
+
+    if not msg.reply_to_message:
+        return await msg.reply("⚠️ Reply to a message first")
 
     if len(msg.command) < 2:
-        return await msg.reply("Usage: !draid @username")
+        return await msg.reply("Usage: !replyraid text")
 
-    user = msg.command[1].replace("@", "")
+    text = msg.text.split(" ", 1)[1]
 
-    if user in db["users"]:
-        db["users"].remove(user)
-        save_db(db)
-        await msg.reply(f"❌ Removed: {user}")
-    else:
-        await msg.reply("Not found")
+    target_msg = msg.reply_to_message
 
-# ================= COUNT SET =================
-@app.on_message(filters.me & filters.command("count", prefixes="!"))
-async def set_count(_, msg):
+    for _ in range(db["count"]):
 
-    if len(msg.command) < 2:
-        return await msg.reply("Usage: !count 1-10")
+        try:
+            await target_msg.reply(text)
+        except:
+            pass
 
-    try:
-        db["count"] = int(msg.command[1])
-        save_db(db)
-        await msg.reply(f"✅ Count set: {db['count']}")
-    except:
-        await msg.reply("Invalid number")
+    await msg.reply("✅ Reply Raid Done")
 
-# ================= SHOW USERS =================
-@app.on_message(filters.me & filters.command("list", prefixes="!"))
-async def list_users(_, msg):
-
-    users = db.get("users", [])
-
-    if not users:
-        return await msg.reply("No users added")
-
-    text = "📌 RAID USERS:\n\n"
-    text += "\n".join([f"- {u}" for u in users])
-
-    await msg.reply(text)
+# ================= TEST =================
+@app.on_message(filters.me & filters.command("test", prefixes="!"))
+async def test(_, msg):
+    await msg.reply("RAID MODULE WORKING ✅")
