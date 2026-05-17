@@ -23,15 +23,14 @@ def save_db(data):
 
 db = load_db()
 
-# ================= DEBUG =================
 print("🔥 RAID MODULE LOADED")
 
 # ================= ADD USER =================
-@app.on_message(filters.me & filters.command("rraid", prefixes="!"))
+@app.on_message(filters.me & filters.command("rraid", prefixes="."))
 async def rraid(client, msg):
 
     if len(msg.command) < 2:
-        return await msg.reply("Usage: !rraid @username")
+        return await msg.reply("Usage: .rraid @username")
 
     user = msg.command[1].replace("@", "")
 
@@ -42,12 +41,13 @@ async def rraid(client, msg):
     else:
         await msg.reply("⚠️ Already exists")
 
+
 # ================= REMOVE USER =================
-@app.on_message(filters.me & filters.command("draid", prefixes="!"))
+@app.on_message(filters.me & filters.command("draid", prefixes="."))
 async def draid(client, msg):
 
     if len(msg.command) < 2:
-        return await msg.reply("Usage: !draid @username")
+        return await msg.reply("Usage: .draid @username")
 
     user = msg.command[1].replace("@", "")
 
@@ -58,12 +58,13 @@ async def draid(client, msg):
     else:
         await msg.reply("Not found")
 
+
 # ================= SET COUNT =================
-@app.on_message(filters.me & filters.command("count", prefixes="!"))
+@app.on_message(filters.me & filters.command("count", prefixes="."))
 async def set_count(client, msg):
 
     if len(msg.command) < 2:
-        return await msg.reply("Usage: !count 5")
+        return await msg.reply("Usage: .count 5")
 
     try:
         db["count"] = int(msg.command[1])
@@ -72,8 +73,9 @@ async def set_count(client, msg):
     except:
         await msg.reply("❌ Invalid number")
 
+
 # ================= REPLY RAID =================
-@app.on_message(filters.me & filters.command("replyraid", prefixes="!"))
+@app.on_message(filters.me & filters.command("replyraid", prefixes="."))
 async def replyraid(client, msg):
 
     print("🔥 replyraid triggered")
@@ -82,7 +84,7 @@ async def replyraid(client, msg):
         return await msg.reply("⚠️ Reply to a message first")
 
     if len(msg.command) < 2:
-        return await msg.reply("Usage: !replyraid text")
+        return await msg.reply("Usage: .replyraid text")
 
     text = msg.text.split(" ", 1)
 
@@ -93,17 +95,18 @@ async def replyraid(client, msg):
 
     count = db.get("count", 3)
 
-    for i in range(count):
+    for _ in range(count):
         try:
             await msg.reply_to_message.reply(text)
-            await asyncio.sleep(random.uniform(0.5, 1.5))
+            await asyncio.sleep(random.uniform(0.5, 1.2))
         except:
             pass
 
     await msg.reply("✅ Reply Raid Done")
 
+
 # ================= AUTO RAID =================
-@app.on_message(filters.group & ~filters.me)
+@app.on_message(filters.group & filters.me)
 async def auto_raid(client, msg):
 
     if not msg.from_user:
@@ -115,13 +118,11 @@ async def auto_raid(client, msg):
     if user_id not in db["users"] and username not in db["users"]:
         return
 
-    text = random.choice([
-        "🔥 spam message 1",
-        "😂 spam message 2",
-        "⚡ spam message 3"
-    ])
-
     try:
-        await msg.reply(text)
+        await msg.reply(random.choice([
+            "🔥 spam 1",
+            "😂 spam 2",
+            "⚡ spam 3"
+        ]))
     except:
         pass
