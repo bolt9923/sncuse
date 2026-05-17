@@ -1,24 +1,36 @@
 import asyncio
 import random
+import re
 from telethon import events
+from telethon.tl.functions.messages import GetStickerSetRequest
+from telethon.tl.types import InputStickerSetShortName
 
 # ================= STATES =================
 sticker_on = {}
 sticker_delay = {}
 sticker_pack = {}
 
-# ================= LOAD FUNCTION =================
+# ================= EXTRACT PACK NAME =================
+def extract_pack_name(text):
+    """
+    Extract pack name from Telegram link or direct input
+    """
+    if "t.me/addstickers/" in text:
+        return text.split("t.me/addstickers/")[1].strip("/")
+    return text.strip()
+
+# ================= LOAD =================
 def load_stickers(client):
 
     print("🟢 STICKER SYSTEM LOADED")
 
-    # ================= STICKER ON =================
+    # ================= ON =================
     @client.on(events.NewMessage(outgoing=True, pattern=r"\.sticker on"))
     async def on(event):
         sticker_on[event.sender_id] = True
         await event.reply("✅ STICKER ON")
 
-    # ================= STICKER OFF =================
+    # ================= OFF =================
     @client.on(events.NewMessage(outgoing=True, pattern=r"\.sticker off"))
     async def off(event):
         sticker_on[event.sender_id] = False
@@ -26,33 +38,26 @@ def load_stickers(client):
 
     # ================= DELAY =================
     @client.on(events.NewMessage(outgoing=True, pattern=r"\.setstickerdelay (\d+)"))
-    async def set_delay(event):
+    async def delay(event):
         sticker_delay[event.sender_id] = int(event.pattern_match.group(1))
         await event.reply(f"⏱ DELAY SET: {sticker_delay[event.sender_id]}s")
 
-    # ================= SET PACK (REPLY BASED FIXED) =================
-    @client.on(events.NewMessage(outgoing=True, pattern=r"\.setstickerpack"))
+    # ================= SET PACK (LINK OR NAME) =================
+    @client.on(events.NewMessage(outgoing=True, pattern=r"\.setstickerpack (.+)"))
     async def set_pack(event):
 
-        if not event.is_reply:
-            return await event.reply("⚠️ Reply to a sticker from pack")
+        raw_input = event.pattern_match.group(1)
 
-        reply = await event.get_reply_message()
-
-        if not reply.sticker:
-            return await event.reply("❌ This is not a sticker")
+        pack_name = extract_pack_name(raw_input)
 
         try:
-            sticker = reply.sticker
+            result = await client(GetStickerSetRequest(
+                stickerset=InputStickerSetShortName(pack_name),
+                hash=0
+            ))
 
-            # SAFE PACK EXTRACTION
-            if not hasattr(sticker, "stickerset") or not sticker.stickerset:
-                return await event.reply("❌ Cannot detect sticker set")
-
-            pack_name = sticker.stickerset.short_name
-
-            if not pack_name:
-                return await event.reply("❌ Invalid sticker pack")
+            if not result or not result.documents:
+                return await event.reply("❌ Invalid Sticker Pack")
 
             sticker_pack[event.sender_id] = pack_name
 
@@ -61,7 +66,7 @@ def load_stickers(client):
         except Exception as e:
             await event.reply(f"❌ ERROR:\n{e}")
 
-    # ================= AUTO STICKER ENGINE =================
+    # ================= AUTO STICKER =================
     @client.on(events.NewMessage)
     async def auto_sticker(event):
 
@@ -71,7 +76,6 @@ def load_stickers(client):
         if event.raw_text and event.raw_text.startswith("."):
             return
 
-        # must be ON
         if not sticker_on.get(uid, False):
             return
 
@@ -85,10 +89,12 @@ def load_stickers(client):
         try:
             await asyncio.sleep(delay)
 
-            # get sticker set safely
-            result = await client.get_sticker_set(pack)
+            result = await client(GetStickerSetRequest(
+                stickerset=InputStickerSetShortName(pack),
+                hash=0
+            ))
 
-            if not result or not result.documents:
+            if not result.documents:
                 return
 
             sticker = random.choice(result.documents)
@@ -98,4 +104,4 @@ def load_stickers(client):
         except Exception as e:
             print("STICKER ERROR:", e)
 
-    print("🔥 STICKER SYSTEM READY (100% WORKING)")
+    print("🔥 STICKER SYSTEM READY (LINK SUPPORT ENABLED)")
