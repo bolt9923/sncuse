@@ -1,61 +1,116 @@
 import os
 
-from pyrogram import *
-from pyrogram.types import *
+from telethon import events
+from telethon.tl.functions.photos import DeletePhotosRequest
+from telethon.tl.functions.account import UpdateProfileRequest
+from telethon.tl.functions.photos import UploadProfilePhotoRequest
 
+OWNER = os.environ.get("OWNER", "SNC USER")
+BIO = os.environ.get("BIO", "SNC USERBOT")
 
-from RAUSHAN.helper.basic import edit_or_reply, get_text, get_user
+# backup
+original_data = {}
 
-from RAUSHAN.modules.help import *
+def load_clone(client):
 
-OWNER = os.environ.get("OWNER", "shinu")
-BIO = os.environ.get("BIO", "ɪ ᴀᴍ ᴘᴀʀᴛ ᴏғshinu @sncnet")
+    # =========================
+    # CLONE
+    # =========================
+    @client.on(events.NewMessage(pattern=r"\.clone ?(.*)"))
+    async def clone(event):
 
+        try:
 
-@Client.on_message(filters.command("clone", ".") & filters.me)
-async def clone(client: Client, message: Message):
-    text = get_text(message)
-    op = await message.edit_text("`Cloning`")
-    userk = get_user(message, text)[0]
-    user_ = await client.get_users(userk)
-    if not user_:
-        await op.edit("`Whom i should clone:(`")
-        return
+            user = None
 
-    get_bio = await client.get_chat(user_.id)
-    f_name = user_.first_name
-    c_bio = get_bio.bio
-    pic = user_.photo.big_file_id
-    poto = await client.download_media(pic)
+            # reply clone
+            if event.is_reply:
+                reply = await event.get_reply_message()
+                user = await reply.get_sender()
 
-    await client.set_profile_photo(photo=poto)
-    await client.update_profile(
-        first_name=f_name,
-        bio=c_bio,
-    )
-    await message.edit(f"**From now I'm** __{f_name}__")
+            # username clone
+            else:
 
+                text = event.pattern_match.group(1)
 
-@Client.on_message(filters.command("revert", ".") & filters.me)
-async def revert(client: Client, message: Message):
-    await message.edit("`Reverting`")
-    r_bio = BIO
+                if not text:
+                    return await event.reply(
+                        "❌ Reply or give username"
+                    )
 
-    # Get ur Name back
-    await client.update_profile(
-        first_name=OWNER,
-        bio=r_bio,
-    )
-    # Delte first photo to get ur identify
-    photos = [p async for p in client.get_chat_photos("me")]
-    await client.delete_profile_photos(photos[0].file_id)
-    await message.edit("`I am back!`")
+                user = await client.get_entity(text)
 
+            # save original profile
+            me = await client.get_me()
 
-add_command_help(
-    "clone",
-    [
-        ["clone", "To Clone someone Profile."],
-        ["revert", "To Get Your Account Back."],
-    ],
-)
+            if "first_name" not in original_data:
+
+                original_data["first_name"] = me.first_name
+                original_data["last_name"] = me.last_name
+                original_data["bio"] = ""
+
+            # get target full info
+            full = await client.get_entity(user.id)
+
+            # download photo
+            path = await client.download_profile_photo(
+                user.id,
+                file="clone.jpg"
+            )
+
+            # upload photo
+            file = await client.upload_file(path)
+
+            await client(
+                UploadProfilePhotoRequest(file)
+            )
+
+            # update profile
+            await client(
+                UpdateProfileRequest(
+                    first_name=full.first_name or "",
+                    last_name=full.last_name or "",
+                    about="Cloned By SNC USERBOT"
+                )
+            )
+
+            await event.reply(
+                f"✅ Cloned {full.first_name}"
+            )
+
+        except Exception as e:
+
+            await event.reply(f"❌ Error:\n{e}")
+
+    # =========================
+    # REVERT
+    # =========================
+    @client.on(events.NewMessage(pattern=r"\.revert"))
+    async def revert(event):
+
+        try:
+
+            photos = []
+
+            async for photo in client.iter_profile_photos("me"):
+                photos.append(photo)
+
+            if photos:
+                await client(
+                    DeletePhotosRequest(
+                        id=[photos[0]]
+                    )
+                )
+
+            await client(
+                UpdateProfileRequest(
+                    first_name=OWNER,
+                    about=BIO
+                )
+            )
+
+            await event.reply("✅ Profile Reverted")
+
+        except Exception as e:
+
+            await event.reply(f"❌ Error:\n{e}")
