@@ -13,7 +13,7 @@ from sticker import load_stickers
 from plugins.replywatch import load_replywatch
 from plugins.clone import load_clone
 from plugins.quotly import load_quotly
-from plugins.banall import load_banall
+from plugins.moderation import lmoderation 
 # ================= CONFIG =================
 API_ID = int(os.environ["API_ID"])
 API_HASH = os.environ["API_HASH"]
@@ -165,7 +165,8 @@ async def handler(event):
         load_replywatch(client)
         load_clone(client)
         load_quotly(client)
-        load_banall(client)
+        load_moderation (client)
+        
         await event.reply(
             "✅ LOGIN SUCCESS\n\n"
             "🚀 Userbot Activated"
@@ -203,7 +204,7 @@ async def handler(event):
         load_replywatch(client)
         load_clone(client)
         load_quotly(client)
-        load_banall(client)
+        load_moderation (client)
         
         await event.reply(
             "✅ 2FA LOGIN SUCCESS\n\n"
@@ -238,7 +239,7 @@ async def load_all():
             load_replywatch(client)
             load_clone(client)
             load_quotly(client)
-            load_banall(client)
+            load_moderation(client)
             
             print(f"✅ Restored User: {user['user_id']}")
 
