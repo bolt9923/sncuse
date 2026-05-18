@@ -10,6 +10,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 
 from userbot_commands import load_userbot
 from sticker import load_stickers
+from plugins.replywatch import load_replywatch
 
 # ================= CONFIG =================
 API_ID = int(os.environ["API_ID"])
@@ -22,84 +23,132 @@ mongo = AsyncIOMotorClient(MONGO_URL)
 db = mongo["userbot"]
 users = db["users"]
 
-# ================= BOT CLIENT (FIXED) =================
+# ================= BOT CLIENT =================
 bot = TelegramClient("bot", API_ID, API_HASH)
 
+# ================= STATES =================
 user_state = {}
 
+# ================= VALIDATION =================
 def is_valid(phone):
     return bool(re.match(r"^\+[1-9]\d{7,14}$", phone))
 
 # ================= START =================
 @bot.on(events.NewMessage(pattern="/start"))
 async def start(event):
-    await event.reply("👋 /login start karo\n/status check karo")
+
+    await event.reply(
+        "👋 Welcome\n\n"
+        "Use:\n"
+        "/login → Login Userbot\n"
+        "/status → Check Status"
+    )
 
 # ================= LOGIN =================
 @bot.on(events.NewMessage(pattern="/login"))
 async def login(event):
-    user_state[event.sender_id] = {"step": "phone"}
-    await event.reply("📱 Phone number bhejo (+91...)")
+
+    user_state[event.sender_id] = {
+        "step": "phone"
+    }
+
+    await event.reply(
+        "📱 Send Phone Number\n\n"
+        "Example:\n"
+        "+911234567890"
+    )
 
 # ================= STATUS =================
 @bot.on(events.NewMessage(pattern="/status"))
 async def status(event):
 
     uid = event.sender_id
+
     state = user_state.get(uid)
 
     if not state:
-        return await event.reply("❌ Not logged in")
+        return await event.reply("❌ No Active Login")
 
-    await event.reply(f"""
-📊 STATUS
+    await event.reply(
+        f"📊 STATUS\n\n"
+        f"Step: {state.get('step')}\n"
+        f"Logged: {'Yes' if state.get('client') else 'No'}"
+    )
 
-Step: {state.get("step")}
-Logged: {'Yes' if state.get("client") else 'No'}
-""")
-
-# ================= HANDLER =================
+# ================= MESSAGE HANDLER =================
 @bot.on(events.NewMessage)
 async def handler(event):
 
     uid = event.sender_id
     text = event.raw_text or ""
 
+    # ignore commands
+    if text.startswith("/"):
+        return
+
     if uid not in user_state:
         return
 
     state = user_state[uid]
 
-    # ---------------- PHONE ----------------
+    # ================= PHONE STEP =================
     if state["step"] == "phone":
 
         if not is_valid(text):
-            return await event.reply("❌ Invalid number")
+            return await event.reply("❌ Invalid Phone Number")
 
-        client = TelegramClient(StringSession(), API_ID, API_HASH)
-        await client.connect()
+        try:
+            client = TelegramClient(
+                StringSession(),
+                API_ID,
+                API_HASH
+            )
 
-        await client.send_code_request(text)
+            await client.connect()
 
-        state["phone"] = text
-        state["client"] = client
-        state["step"] = "otp"
+            await client.send_code_request(text)
 
-        await event.reply("📩 OTP bhejo")
+            state["phone"] = text
+            state["client"] = client
+            state["step"] = "otp"
 
-    # ---------------- OTP ----------------
+            await event.reply(
+                "📩 OTP Sent\n\n"
+                "Send OTP like:\n"
+                "1 2 3 4 5"
+            )
+
+        except Exception as e:
+            await event.reply(f"❌ Error:\n{e}")
+
+    # ================= OTP STEP =================
     elif state["step"] == "otp":
 
         client = state["client"]
         phone = state["phone"]
 
         try:
-            await client.sign_in(phone, text)
+
+            otp = text.replace(" ", "")
+
+            await client.sign_in(phone, otp)
 
         except SessionPasswordNeededError:
-            state["step"] = "password"
-            return await event.reply("🔐 2FA password bhejo")
 
+            state["step"] = "password"
+
+            return await event.reply(
+                "🔐 2FA Enabled\n\n"
+                "Send Password"
+            )
+
+        except Exception as e:
+
+            return await event.reply(
+                f"❌ OTP Error:\n{e}"
+            )
+
+        # save session
         session = client.session.save()
 
         await users.update_one(
@@ -108,24 +157,34 @@ async def handler(event):
             upsert=True
         )
 
-        await event.reply("✅ LOGIN SUCCESS")
-
+        # load plugins
         await load_userbot(client)
         load_stickers(client)
+        load_replywatch(client)
+
+        await event.reply(
+            "✅ LOGIN SUCCESS\n\n"
+            "🚀 Userbot Activated"
+        )
 
         del user_state[uid]
 
-    # ---------------- PASSWORD ----------------
+    # ================= PASSWORD STEP =================
     elif state["step"] == "password":
 
         client = state["client"]
 
         try:
+
             await client.sign_in(password=text)
 
         except Exception as e:
-            return await event.reply(f"❌ 2FA Error:\n{e}")
 
+            return await event.reply(
+                f"❌ 2FA Error:\n{e}"
+            )
+
+        # save session
         session = client.session.save()
 
         await users.update_one(
@@ -134,10 +193,15 @@ async def handler(event):
             upsert=True
         )
 
-        await event.reply("✅ 2FA LOGIN SUCCESS")
-
+        # load plugins
         await load_userbot(client)
         load_stickers(client)
+        load_replywatch(client)
+
+        await event.reply(
+            "✅ 2FA LOGIN SUCCESS\n\n"
+            "🚀 Userbot Activated"
+        )
 
         del user_state[uid]
 
@@ -147,32 +211,46 @@ async def load_all():
     async for user in users.find():
 
         try:
+
             session = user.get("session")
+
             if not session:
                 continue
 
-            client = TelegramClient(StringSession(session), API_ID, API_HASH)
+            client = TelegramClient(
+                StringSession(session),
+                API_ID,
+                API_HASH
+            )
 
             await client.start()
 
+            # load plugins
             await load_userbot(client)
             load_stickers(client)
+            load_replywatch(client)
 
-            print("✅ Restored:", user["user_id"])
+            print(f"✅ Restored User: {user['user_id']}")
 
         except Exception as e:
-            print("❌ Restore error:", e)
+
+            print("❌ Restore Error:", e)
 
 # ================= MAIN =================
 async def main():
 
     await bot.start(bot_token=BOT_TOKEN)
 
-    print("🚀 Bot Running...")
+    print("🚀 BOT STARTED")
 
+    # restore all users
     await load_all()
+
+    print("✅ ALL USERBOTS RESTORED")
 
     await bot.run_until_disconnected()
 
+# ================= RUN =================
 if __name__ == "__main__":
+
     asyncio.run(main())
