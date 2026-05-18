@@ -8,12 +8,15 @@ from telethon.errors import SessionPasswordNeededError
 
 from motor.motor_asyncio import AsyncIOMotorClient
 
+# ================= IMPORT PLUGINS =================
 from userbot_commands import load_userbot
 from sticker import load_stickers
+
 from plugins.replywatch import load_replywatch
 from plugins.clone import load_clone
 from plugins.quotly import load_quotly
 from plugins.moderation import load_moderation
+
 # ================= CONFIG =================
 API_ID = int(os.environ["API_ID"])
 API_HASH = os.environ["API_HASH"]
@@ -22,28 +25,40 @@ MONGO_URL = os.environ["MONGO_URL"]
 
 # ================= MONGO =================
 mongo = AsyncIOMotorClient(MONGO_URL)
+
 db = mongo["userbot"]
+
 users = db["users"]
 
 # ================= BOT CLIENT =================
-bot = TelegramClient("bot", API_ID, API_HASH)
+bot = TelegramClient(
+    "bot",
+    API_ID,
+    API_HASH
+)
 
 # ================= STATES =================
 user_state = {}
 
 # ================= VALIDATION =================
 def is_valid(phone):
-    return bool(re.match(r"^\+[1-9]\d{7,14}$", phone))
+
+    return bool(
+        re.match(
+            r"^\+[1-9]\d{7,14}$",
+            phone
+        )
+    )
 
 # ================= START =================
 @bot.on(events.NewMessage(pattern="/start"))
 async def start(event):
 
     await event.reply(
-        "👋 Welcome\n\n"
-        "Use:\n"
+        "👋 Welcome To SNC USERBOT\n\n"
+        "Commands:\n"
         "/login → Login Userbot\n"
-        "/status → Check Status"
+        "/status → Check Login Status"
     )
 
 # ================= LOGIN =================
@@ -55,7 +70,7 @@ async def login(event):
     }
 
     await event.reply(
-        "📱 Send Phone Number\n\n"
+        "📱 Send Your Phone Number\n\n"
         "Example:\n"
         "+911234567890"
     )
@@ -69,7 +84,10 @@ async def status(event):
     state = user_state.get(uid)
 
     if not state:
-        return await event.reply("❌ No Active Login")
+
+        return await event.reply(
+            "❌ No Active Login"
+        )
 
     await event.reply(
         f"📊 STATUS\n\n"
@@ -82,6 +100,7 @@ async def status(event):
 async def handler(event):
 
     uid = event.sender_id
+
     text = event.raw_text or ""
 
     # ignore commands
@@ -97,9 +116,13 @@ async def handler(event):
     if state["step"] == "phone":
 
         if not is_valid(text):
-            return await event.reply("❌ Invalid Phone Number")
+
+            return await event.reply(
+                "❌ Invalid Phone Number"
+            )
 
         try:
+
             client = TelegramClient(
                 StringSession(),
                 API_ID,
@@ -116,24 +139,31 @@ async def handler(event):
 
             await event.reply(
                 "📩 OTP Sent\n\n"
-                "Send OTP like:\n"
+                "Send OTP Like:\n"
                 "1 2 3 4 5"
             )
 
         except Exception as e:
-            await event.reply(f"❌ Error:\n{e}")
+
+            await event.reply(
+                f"❌ Error:\n{e}"
+            )
 
     # ================= OTP STEP =================
     elif state["step"] == "otp":
 
         client = state["client"]
+
         phone = state["phone"]
 
         try:
 
             otp = text.replace(" ", "")
 
-            await client.sign_in(phone, otp)
+            await client.sign_in(
+                phone,
+                otp
+            )
 
         except SessionPasswordNeededError:
 
@@ -141,7 +171,7 @@ async def handler(event):
 
             return await event.reply(
                 "🔐 2FA Enabled\n\n"
-                "Send Password"
+                "Send Your Password"
             )
 
         except Exception as e:
@@ -150,7 +180,7 @@ async def handler(event):
                 f"❌ OTP Error:\n{e}"
             )
 
-        # save session
+        # ================= SAVE SESSION =================
         session = client.session.save()
 
         await users.update_one(
@@ -159,17 +189,22 @@ async def handler(event):
             upsert=True
         )
 
-        # load plugins
+        # ================= LOAD PLUGINS =================
         await load_userbot(client)
+
         load_stickers(client)
+
         load_replywatch(client)
+
         load_clone(client)
+
         load_quotly(client)
+
         load_moderation(client)
-        
+
         await event.reply(
             "✅ LOGIN SUCCESS\n\n"
-            "🚀 Userbot Activated"
+            "🚀 USERBOT ACTIVATED"
         )
 
         del user_state[uid]
@@ -181,7 +216,9 @@ async def handler(event):
 
         try:
 
-            await client.sign_in(password=text)
+            await client.sign_in(
+                password=text
+            )
 
         except Exception as e:
 
@@ -189,7 +226,7 @@ async def handler(event):
                 f"❌ 2FA Error:\n{e}"
             )
 
-        # save session
+        # ================= SAVE SESSION =================
         session = client.session.save()
 
         await users.update_one(
@@ -198,17 +235,22 @@ async def handler(event):
             upsert=True
         )
 
-        # load plugins
+        # ================= LOAD PLUGINS =================
         await load_userbot(client)
+
         load_stickers(client)
+
         load_replywatch(client)
+
         load_clone(client)
+
         load_quotly(client)
+
         load_moderation(client)
-        
+
         await event.reply(
             "✅ 2FA LOGIN SUCCESS\n\n"
-            "🚀 Userbot Activated"
+            "🚀 USERBOT ACTIVATED"
         )
 
         del user_state[uid]
@@ -233,28 +275,40 @@ async def load_all():
 
             await client.start()
 
-            # load plugins
+            # ================= LOAD PLUGINS =================
             await load_userbot(client)
+
             load_stickers(client)
+
             load_replywatch(client)
+
             load_clone(client)
+
             load_quotly(client)
+
             load_moderation(client)
-            
-            print(f"✅ Restored User: {user['user_id']}")
+
+            print(
+                f"✅ Restored User: {user['user_id']}"
+            )
 
         except Exception as e:
 
-            print("❌ Restore Error:", e)
+            print(
+                "❌ Restore Error:",
+                e
+            )
 
 # ================= MAIN =================
 async def main():
 
-    await bot.start(bot_token=BOT_TOKEN)
+    await bot.start(
+        bot_token=BOT_TOKEN
+    )
 
     print("🚀 BOT STARTED")
 
-    # restore all users
+    # restore all userbots
     await load_all()
 
     print("✅ ALL USERBOTS RESTORED")
