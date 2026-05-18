@@ -4,15 +4,9 @@ import time
 
 from telethon import events
 
-# =========================
-# STORAGE
-# =========================
 reply_watch = {}
 last_reply_time = {}
 
-# =========================
-# LOAD FUNCTION
-# =========================
 def load_replywatch(client):
 
     # =========================
@@ -21,10 +15,10 @@ def load_replywatch(client):
     @client.on(events.NewMessage(pattern=r"\.replywatch (.+?) (\d+)"))
     async def add_watch(event):
 
-        username = event.pattern_match.group(1)
+        user = event.pattern_match.group(1)
         delay = int(event.pattern_match.group(2))
 
-        username = username.replace("@", "").lower()
+        user = user.replace("@", "").lower()
 
         messages = [
             "👀 Message detected",
@@ -39,14 +33,14 @@ def load_replywatch(client):
             "💥 Reply completed"
         ]
 
-        reply_watch[username] = {
+        reply_watch[user] = {
             "delay": delay,
             "messages": messages
         }
 
         await event.reply(
             f"✅ Reply watch enabled\n"
-            f"👤 User: @{username}\n"
+            f"👤 User: {user}\n"
             f"⏱ Delay: {delay} sec"
         )
 
@@ -56,14 +50,15 @@ def load_replywatch(client):
     @client.on(events.NewMessage(pattern=r"\.stopreply (.+)"))
     async def stop_watch(event):
 
-        username = event.pattern_match.group(1)
-        username = username.replace("@", "").lower()
+        user = event.pattern_match.group(1)
 
-        if username in reply_watch:
-            del reply_watch[username]
-            await event.reply(f"❌ Stopped watching @{username}")
-        else:
-            await event.reply("⚠ User not found")
+        user = user.replace("@", "").lower()
+
+        if user in reply_watch:
+
+            del reply_watch[user]
+
+            await event.reply(f"❌ Stopped watching {user}")
 
     # =========================
     # AUTO REPLY
@@ -71,37 +66,52 @@ def load_replywatch(client):
     @client.on(events.NewMessage)
     async def auto_reply(event):
 
-        if not event.sender:
-            return
+        try:
 
-        if not event.sender.username:
-            return
-
-        username = event.sender.username.lower()
-
-        if username not in reply_watch:
-            return
-
-        now = time.time()
-
-        # cooldown
-        if username in last_reply_time:
-            if now - last_reply_time[username] < 15:
+            if not event.sender_id:
                 return
 
-        last_reply_time[username] = now
+            sender = await event.get_sender()
 
-        data = reply_watch[username]
+            username = ""
 
-        delay = data["delay"]
-        messages = data["messages"]
+            if sender.username:
+                username = sender.username.lower()
 
-        await asyncio.sleep(delay)
+            user_id = str(sender.id)
 
-        msg = random.choice(messages)
+            matched = None
 
-        try:
+            # match username
+            if username in reply_watch:
+                matched = username
+
+            # match id
+            elif user_id in reply_watch:
+                matched = user_id
+
+            if not matched:
+                return
+
+            now = time.time()
+
+            # anti flood
+            if matched in last_reply_time:
+                if now - last_reply_time[matched] < 15:
+                    return
+
+            last_reply_time[matched] = now
+
+            data = reply_watch[matched]
+
+            delay = data["delay"]
+
+            await asyncio.sleep(delay)
+
+            msg = random.choice(data["messages"])
+
             await event.reply(msg)
 
         except Exception as e:
-            print(e)
+
+            print("AUTO REPLY ERROR:", e)
