@@ -198,7 +198,8 @@ async def handler(event):
         await load_userbot(client)
         load_stickers(client)
         load_replywatch(client)
-
+        load_clone(client)
+        
         await event.reply(
             "✅ 2FA LOGIN SUCCESS\n\n"
             "🚀 Userbot Activated"
@@ -230,6 +231,7 @@ async def load_all():
             await load_userbot(client)
             load_stickers(client)
             load_replywatch(client)
+            load_clone(client)
 
             print(f"✅ Restored User: {user['user_id']}")
 
