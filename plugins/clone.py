@@ -1,9 +1,11 @@
 import os
 
-from telethon import events
+from telethon import events, functions
 from telethon.tl.functions.account import UpdateProfileRequest
-from telethon.tl.functions.photos import UploadProfilePhotoRequest
-from telethon.tl.functions.photos import DeletePhotosRequest
+from telethon.tl.functions.photos import (
+    UploadProfilePhotoRequest,
+    DeletePhotosRequest
+)
 
 # =========================
 # DEFAULT PROFILE
@@ -48,7 +50,8 @@ def load_clone(client):
                 if not text:
 
                     return await event.reply(
-                        "❌ Reply to user or give username\n\nExample:\n.clone @username"
+                        "❌ Reply to user or give username\n\n"
+                        "Example:\n.clone @username"
                     )
 
                 target = await client.get_entity(text)
@@ -62,47 +65,90 @@ def load_clone(client):
                 original_profile["last_name"] = me.last_name or ""
                 original_profile["bio"] = BIO
 
-            # ---------------- UPDATE NAME/BIO ----------------
+            # ================= GET TARGET BIO =================
+            bio = ""
+
+            try:
+
+                full = await client(
+                    functions.users.GetFullUserRequest(target.id)
+                )
+
+                bio = full.full_user.about or ""
+
+            except Exception as e:
+
+                print("BIO ERROR:", e)
+
+            # ================= UPDATE PROFILE =================
             await client(
                 UpdateProfileRequest(
                     first_name=target.first_name or "",
                     last_name=target.last_name or "",
-                    about="SNC USERBOT CLONE"
+                    about=bio
                 )
             )
 
-            # ---------------- DELETE OLD PROFILE PHOTO ----------------
-            photos = []
+            # ================= DELETE OLD PROFILE PHOTO =================
+            try:
 
-            async for photo in client.iter_profile_photos("me"):
-                photos.append(photo)
+                photos = []
 
-            if photos:
+                async for photo in client.iter_profile_photos("me"):
+                    photos.append(photo)
 
-                try:
+                if photos:
+
                     await client(
                         DeletePhotosRequest(
                             id=[photos[0]]
                         )
                     )
-                except:
-                    pass
 
-            # ---------------- DOWNLOAD TARGET PHOTO ----------------
-            path = await client.download_profile_photo(target.id)
+            except Exception as e:
 
-            # ---------------- UPLOAD TARGET PHOTO ----------------
-            if path and os.path.exists(path):
+                print("DELETE PHOTO ERROR:", e)
 
-                file = await client.upload_file(path)
+            # ================= DOWNLOAD TARGET PHOTO =================
+            path = None
 
-                await client(
-                    UploadProfilePhotoRequest(
-                        file=file
-                    )
+            try:
+
+                path = await client.download_profile_photo(
+                    target.id,
+                    file="clone.jpg"
                 )
 
-            # ---------------- SUCCESS ----------------
+            except Exception as e:
+
+                print("DOWNLOAD PHOTO ERROR:", e)
+
+            # ================= UPLOAD TARGET PHOTO =================
+            if path:
+
+                try:
+
+                    if os.path.exists(path):
+
+                        file = await client.upload_file(path)
+
+                        await client(
+                            UploadProfilePhotoRequest(
+                                file=file
+                            )
+                        )
+
+                        print("PHOTO CLONED")
+
+                except Exception as e:
+
+                    print("UPLOAD PHOTO ERROR:", e)
+
+            else:
+
+                print("NO PROFILE PHOTO")
+
+            # ================= SUCCESS =================
             await event.reply(
                 f"✅ Successfully cloned:\n{target.first_name}"
             )
@@ -123,7 +169,7 @@ def load_clone(client):
 
         try:
 
-            # ---------------- RESTORE PROFILE ----------------
+            # ================= RESTORE PROFILE =================
             await client(
                 UpdateProfileRequest(
                     first_name=original_profile.get(
@@ -141,22 +187,25 @@ def load_clone(client):
                 )
             )
 
-            # ---------------- DELETE CLONED PHOTO ----------------
-            photos = []
+            # ================= DELETE CLONED PHOTO =================
+            try:
 
-            async for photo in client.iter_profile_photos("me"):
-                photos.append(photo)
+                photos = []
 
-            if photos:
+                async for photo in client.iter_profile_photos("me"):
+                    photos.append(photo)
 
-                try:
+                if photos:
+
                     await client(
                         DeletePhotosRequest(
                             id=[photos[0]]
                         )
                     )
-                except:
-                    pass
+
+            except Exception as e:
+
+                print("DELETE ERROR:", e)
 
             await event.reply(
                 "✅ Profile reverted successfully"
