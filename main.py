@@ -13,7 +13,7 @@ from sticker import load_stickers
 from plugins.replywatch import load_replywatch
 from plugins.clone import load_clone
 from plugins.quotly import load_quotly
-from plugins.banall import load_quotly
+from plugins.banall import load_banall
 # ================= CONFIG =================
 API_ID = int(os.environ["API_ID"])
 API_HASH = os.environ["API_HASH"]
