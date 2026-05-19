@@ -132,4 +132,72 @@ def load_raid(client):
             
             db["count"] = count
             save_db(db)
-            await event.edit(f"✅ Count: {count}")
+            await event.edit(f"✅ Count: `{count}`")
+        except:
+            await event.edit("❌ Invalid number")
+        
+        await asyncio.sleep(3)
+        try:
+            await event.delete()
+        except:
+            pass
+    
+    
+    # =================== FIXED AUTO-RAID HANDLER ===================
+    @client.on(events.NewMessage())
+    async def auto_raid(event):
+        """Auto-raid when target speaks - FIXED"""
+        
+        # Skip if outgoing (my own messages)
+        if event.out:
+            return
+        
+        # Skip if no sender
+        if not event.sender:
+            return
+        
+        # Only in groups/channels
+        if not event.is_group:
+            return
+        
+        db = load_db()
+        
+        # Get user info
+        user_id = str(event.sender_id)
+        username = getattr(event.sender, 'username', '') or ''
+        
+        # Debug log
+        logger.info(f"[Raid Check] Msg from {username or user_id}, Targets: {db['users']}")
+        
+        # Check if user is targeted
+        if user_id not in db["users"] and username not in db["users"]:
+            return
+        
+        logger.info(f"[Raid Triggered] Attacking {username or user_id}")
+        
+        # Raid them
+        for i in range(db["count"]):
+            try:
+                text = get_next_reply(db)
+                
+                # Typing action
+                await client.send_action(event.chat_id, SendMessageTypingAction())
+                
+                # Random delay
+                await asyncio.sleep(random.randint(2, 4))
+                
+                # Reply
+                await event.reply(text)
+                logger.info(f"[Raid] Sent message {i+1}/{db['count']}")
+                
+            except Exception as e:
+                logger.error(f"[Raid Error] {e}")
+                break
+    
+    
+    logger.info("✅ Raid plugin loaded (FIXED version)")
+
+
+# Aliases
+load = load_raid
+init = load_raid
