@@ -132,4 +132,4 @@ def load_raid(client):
             
             db["count"] = count
             save_db(db)
-            await event.edit(f"✅ Count: `{count}`")
+            await event.edit(f"✅ Count: {count}")
