@@ -16,6 +16,7 @@ from plugins.replywatch import load_replywatch
 from plugins.clone import load_clone
 from plugins.quotly import load_quotly
 from plugins.banall import load_banall
+from plugins.broadcast import load_broadcast
 
 # ================= CONFIG =================
 API_ID = int(os.environ["API_ID"])
@@ -202,6 +203,8 @@ async def handler(event):
 
         load_banall(client)
 
+        load_broadcast(client)
+        
         await event.reply(
             "✅ LOGIN SUCCESS\n\n"
             "🚀 USERBOT ACTIVATED"
@@ -247,7 +250,9 @@ async def handler(event):
         load_quotly(client)
 
         load_banall(client)
-
+        
+        load_broadcast(client)
+        
         await event.reply(
             "✅ 2FA LOGIN SUCCESS\n\n"
             "🚀 USERBOT ACTIVATED"
@@ -287,7 +292,9 @@ async def load_all():
             load_quotly(client)
 
             load_banall(client)
-
+            
+            load_broadcast(client)
+            
             print(
                 f"✅ Restored User: {user['user_id']}"
             )
