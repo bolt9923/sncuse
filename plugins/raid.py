@@ -1,5 +1,5 @@
 """
-FULL WORKING AUTO REPLY PLUGIN
+SAFE AUTO REPLY PLUGIN
 Telethon Userbot Plugin
 """
 
@@ -18,7 +18,7 @@ DB_FILE = "reply_db.json"
 
 REPLY_MESSAGES = [
     "😂 Nice",
-    "🔥 Cool message",
+    "🔥 Cool",
     "👀 Interesting",
     "🤣 Funny",
     "💯 True",
@@ -66,7 +66,7 @@ def save_db(data):
 
 # ====================== MAIN ======================
 
-def load(client):
+def load_raid(client):
 
     logger.info("AUTO REPLY PLUGIN LOADED")
 
@@ -319,5 +319,5 @@ def load(client):
 
 # ====================== ALIASES ======================
 
-init = load
-load = load
+load = load_raid
+init = load_raid
