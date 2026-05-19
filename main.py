@@ -19,6 +19,9 @@ from plugins.banall import load_banall
 from plugins.broadcast import load_broadcast
 from plugins.sangmata import load_sangmata
 from plugins.reraid import load_reraid
+from plugins.spam import load_spam
+from plugins.raid import load_raid
+
 # ================= CONFIG =================
 API_ID = int(os.environ["API_ID"])
 API_HASH = os.environ["API_HASH"]
@@ -209,7 +212,12 @@ async def handler(event):
         load_sangmata(client)
 
         load_reraid(client)
-        
+
+        load_spam(client)
+
+        load_raid(client)
+
+
         await event.reply(
             "✅ LOGIN SUCCESS\n\n"
             "🚀 USERBOT ACTIVATED"
@@ -261,7 +269,11 @@ async def handler(event):
         load_sangmata(client)
 
         load_reraid(client)
-        
+
+        load_spam(client)
+
+        load_raid(client)
+
         await event.reply(
             "✅ 2FA LOGIN SUCCESS\n\n"
             "🚀 USERBOT ACTIVATED"
@@ -307,7 +319,11 @@ async def load_all():
             load_sangmata(client)
             
             load_reraid(client)
-            
+
+            load_spam(client)
+
+            load_raid(client)
+
             print(
                 f"✅ Restored User: {user['user_id']}"
             )
