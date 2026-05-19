@@ -1,5 +1,5 @@
 """
-FULL WORKING RAID PLUGIN
+FULL WORKING AUTO REPLY PLUGIN
 Telethon Userbot Plugin
 """
 
@@ -12,16 +12,16 @@ import os
 
 logger = logging.getLogger(__name__)
 
-DB_FILE = "raid_db.json"
+DB_FILE = "reply_db.json"
 
-# ====================== RAID MESSAGES ======================
+# ====================== REPLY MESSAGES ======================
 
-RAID_MESSAGES = [
-    "spam message 1",
-    "spam message 2",
-    "spam message 3",
-    "spam message 4",
-    "spam message 5",
+REPLY_MESSAGES = [
+    "😂 Nice",
+    "🔥 Cool message",
+    "👀 Interesting",
+    "🤣 Funny",
+    "💯 True",
 ]
 
 # ====================== DATABASE ======================
@@ -36,6 +36,7 @@ def load_db():
     try:
 
         if not os.path.exists(DB_FILE):
+
             with open(DB_FILE, "w") as f:
                 json.dump(default, f, indent=4)
 
@@ -45,7 +46,9 @@ def load_db():
             return json.load(f)
 
     except Exception as e:
+
         logger.error(f"DB LOAD ERROR: {e}")
+
         return default
 
 
@@ -57,6 +60,7 @@ def save_db(data):
             json.dump(data, f, indent=4)
 
     except Exception as e:
+
         logger.error(f"DB SAVE ERROR: {e}")
 
 
@@ -64,15 +68,15 @@ def save_db(data):
 
 def load(client):
 
-    logger.info("RAID PLUGIN LOADED")
+    logger.info("AUTO REPLY PLUGIN LOADED")
 
-    # ====================== .raid ======================
+    # ====================== .reply ======================
 
     @client.on(events.NewMessage(
         outgoing=True,
-        pattern=r'^\.raid(?:\s|$)'
+        pattern=r'^\.reply(?:\s|$)'
     ))
-    async def raid_cmd(event):
+    async def reply_cmd(event):
 
         try:
 
@@ -81,8 +85,9 @@ def load(client):
             args = event.raw_text.split()
 
             if len(args) < 2:
+
                 return await event.edit(
-                    "Usage:\n.raid username"
+                    "Usage:\n.reply username"
                 )
 
             username = (
@@ -98,7 +103,7 @@ def load(client):
                 save_db(db)
 
                 await event.edit(
-                    f"✅ Started raid on @{username}"
+                    f"✅ Auto reply enabled for @{username}"
                 )
 
             else:
@@ -111,15 +116,16 @@ def load(client):
             await event.delete()
 
         except Exception as e:
-            logger.error(f"RAID CMD ERROR: {e}")
 
-    # ====================== .draid ======================
+            logger.error(f"REPLY CMD ERROR: {e}")
+
+    # ====================== .dreply ======================
 
     @client.on(events.NewMessage(
         outgoing=True,
-        pattern=r'^\.draid(?:\s|$)'
+        pattern=r'^\.dreply(?:\s|$)'
     ))
-    async def draid_cmd(event):
+    async def dreply_cmd(event):
 
         try:
 
@@ -128,8 +134,9 @@ def load(client):
             args = event.raw_text.split()
 
             if len(args) < 2:
+
                 return await event.edit(
-                    "Usage:\n.draid username"
+                    "Usage:\n.dreply username"
                 )
 
             username = (
@@ -158,7 +165,8 @@ def load(client):
             await event.delete()
 
         except Exception as e:
-            logger.error(f"DRAID ERROR: {e}")
+
+            logger.error(f"DREPLY ERROR: {e}")
 
     # ====================== .count ======================
 
@@ -175,6 +183,7 @@ def load(client):
             args = event.raw_text.split()
 
             if len(args) < 2:
+
                 return await event.edit(
                     "Usage:\n.count 5"
                 )
@@ -184,8 +193,8 @@ def load(client):
             if count < 1:
                 count = 1
 
-            if count > 50:
-                count = 50
+            if count > 10:
+                count = 10
 
             db["count"] = count
 
@@ -199,36 +208,39 @@ def load(client):
             await event.delete()
 
         except:
+
             await event.edit("Invalid number")
 
-    # ====================== .raidlist ======================
+    # ====================== .replylist ======================
 
     @client.on(events.NewMessage(
         outgoing=True,
-        pattern=r'^\.raidlist$'
+        pattern=r'^\.replylist$'
     ))
-    async def raidlist_cmd(event):
+    async def replylist_cmd(event):
 
         db = load_db()
 
-        text = "⚔ RAID LIST ⚔\n\n"
+        text = "🤖 AUTO REPLY LIST 🤖\n\n"
 
         if not db["users"]:
+
             text += "No users added"
 
         else:
 
             for user in db["users"]:
+
                 text += f"• @{user}\n"
 
         text += f"\nCount: {db['count']}"
 
         await event.edit(text)
 
-    # ====================== AUTO RAID ======================
+    # ====================== AUTO REPLY ======================
 
     @client.on(events.NewMessage(incoming=True))
-    async def auto_raid(event):
+    async def auto_reply(event):
 
         try:
 
@@ -260,29 +272,26 @@ def load(client):
 
             print(f"CHECKING: {username}")
 
-            # MATCH USER
             if (
                 username not in targets
                 and user_id not in targets
             ):
                 return
 
-            print("RAID TRIGGERED")
+            print("AUTO REPLY TRIGGERED")
 
-            # SEND REPLIES
             for i in range(db["count"]):
 
                 try:
 
                     text = random.choice(
-                        RAID_MESSAGES
+                        REPLY_MESSAGES
                     )
 
                     await asyncio.sleep(
                         random.randint(1, 2)
                     )
 
-                    # IMPORTANT FIX
                     await client.send_message(
                         entity=event.chat_id,
                         message=text,
@@ -294,17 +303,21 @@ def load(client):
                     )
 
                 except Exception as e:
+
                     logger.error(
                         f"SEND ERROR: {e}"
                     )
+
                     break
 
         except Exception as e:
+
             logger.error(
-                f"AUTO RAID ERROR: {e}"
+                f"AUTO REPLY ERROR: {e}"
             )
 
 
 # ====================== ALIASES ======================
 
 init = load
+load = load
