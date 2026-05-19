@@ -18,7 +18,7 @@ from plugins.quotly import load_quotly
 from plugins.banall import load_banall
 from plugins.broadcast import load_broadcast
 from plugins.sangmata import load_sangmata
-
+from plugins.reraid import load_reraid
 # ================= CONFIG =================
 API_ID = int(os.environ["API_ID"])
 API_HASH = os.environ["API_HASH"]
@@ -207,6 +207,8 @@ async def handler(event):
         load_broadcast(client)
 
         load_sangmata(client)
+
+        load_reraid(client)
         
         await event.reply(
             "✅ LOGIN SUCCESS\n\n"
@@ -257,6 +259,8 @@ async def handler(event):
         load_broadcast(client)
 
         load_sangmata(client)
+
+        load_reraid(client)
         
         await event.reply(
             "✅ 2FA LOGIN SUCCESS\n\n"
@@ -301,6 +305,8 @@ async def load_all():
             load_broadcast(client)
 
             load_sangmata(client)
+            
+            load_reraid(client)
             
             print(
                 f"✅ Restored User: {user['user_id']}"
