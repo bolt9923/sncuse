@@ -15,7 +15,7 @@ from sticker import load_stickers
 from plugins.replywatch import load_replywatch
 from plugins.clone import load_clone
 from plugins.quotly import load_quotly
-from plugins.moderation import load_moderation
+from plugins.banall import load_banall
 
 # ================= CONFIG =================
 API_ID = int(os.environ["API_ID"])
@@ -200,7 +200,7 @@ async def handler(event):
 
         load_quotly(client)
 
-        load_moderation(client)
+        load_banall(client)
 
         await event.reply(
             "✅ LOGIN SUCCESS\n\n"
@@ -246,7 +246,7 @@ async def handler(event):
 
         load_quotly(client)
 
-        load_moderation(client)
+        load_banall(client)
 
         await event.reply(
             "✅ 2FA LOGIN SUCCESS\n\n"
@@ -286,7 +286,7 @@ async def load_all():
 
             load_quotly(client)
 
-            load_moderation(client)
+            load_banall(client)
 
             print(
                 f"✅ Restored User: {user['user_id']}"
