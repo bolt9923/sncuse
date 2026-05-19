@@ -1,9 +1,5 @@
 """
-Raid Plugin - Auto-raid on any message from target
-Commands:
-  .raid <user> - Add user to raid list
-  .draid <user> - Remove user from raid list
-  .count <num> - Set raid message count
+Raid Plugin - Fixed version
 """
 
 from telethon import events
@@ -19,7 +15,6 @@ DB_FILE = "raid_db.json"
 
 XYZ = [
     "criminal ki maa ke chut mai mera loda 🤣🤣",
-    "crminal aapni maa ke chut dilwao paisa dunga",
     "TERI VAHEEN NHI HAI KYA? 9 MAHINE RUK SAGI VAHEEN DETA HU PHIR TU AUR VOHA DONO ROYAL PAPA BOLNA🤣🤣🤩",
     "TERI MAA K BHOSDE ME AEROPLANEPARK KARKE UDAAN BHAR DUGA criminal beta ✈️🛫",
     "tera cuta hua lula se tu baap bana ka sapna deakh yaha teri maa mai chod diya💣",
@@ -38,13 +33,16 @@ XYZ = [
 def load_db():
     try:
         with open(DB_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
+            data = json.load(f)
+            if "users" not in data:
+                data["users"] = []
+            if "count" not in data:
+                data["count"] = 1
+            if "scores" not in data:
+                data["scores"] = {x: 0 for x in XYZ}
+            return data
     except:
-        return {
-            "users": [],
-            "count": 1,
-            "scores": {x: 0 for x in XYZ}
-        }
+        return {"users": [], "count": 1, "scores": {x: 0 for x in XYZ}}
 
 
 def save_db(data):
@@ -63,29 +61,28 @@ def get_next_reply(db):
 
 
 def load_raid(client):
-    """Load raid plugin"""
+    """Load raid plugin with FIXED handlers"""
     
     db = load_db()
     save_db(db)
     
-    # ------------------ .raid Command ------------------
+    # Command: .raid
     @client.on(events.NewMessage(pattern=r'^\.raid(?:\s|$)', outgoing=True))
-    async def add_raid(event):
+    async def cmd_raid(event):
         db = load_db()
-        
         args = event.pattern_match.string.split()
+        
         if len(args) < 2:
-            await event.edit("Usage: `.raid @username/user_id`")
-            return
+            return await event.edit("Usage: `.raid @username`")
         
         user = args[1].replace("@", "").strip()
         
         if user not in db["users"]:
             db["users"].append(user)
             save_db(db)
-            await event.edit(f"✅ Raid enabled on `{user}`")
+            msg = await event.edit(f"✅ Raid started on `{user}`")
         else:
-            await event.edit(f"⚠️ `{user}` already in raid list")
+            msg = await event.edit(f"⚠️ Already raiding `{user}`")
         
         await asyncio.sleep(3)
         try:
@@ -94,24 +91,23 @@ def load_raid(client):
             pass
     
     
-    # ------------------ .draid Command ------------------
+    # Command: .draid
     @client.on(events.NewMessage(pattern=r'^\.draid(?:\s|$)', outgoing=True))
-    async def remove_raid(event):
+    async def cmd_draid(event):
         db = load_db()
-        
         args = event.pattern_match.string.split()
+        
         if len(args) < 2:
-            await event.edit("Usage: `.draid @username/user_id`")
-            return
+            return await event.edit("Usage: `.draid @username`")
         
         user = args[1].replace("@", "").strip()
         
         if user in db["users"]:
             db["users"].remove(user)
             save_db(db)
-            await event.edit(f"✅ Removed `{user}` from raid")
+            await event.edit(f"✅ Stopped raiding `{user}`")
         else:
-            await event.edit(f"⚠️ `{user}` not found")
+            await event.edit(f"⚠️ `{user}` not in list")
         
         await asyncio.sleep(3)
         try:
@@ -120,70 +116,20 @@ def load_raid(client):
             pass
     
     
-    # ------------------ .count Command ------------------
+    # Command: .count
     @client.on(events.NewMessage(pattern=r'^\.count(?:\s|$)', outgoing=True))
-    async def set_count(event):
+    async def cmd_count(event):
         db = load_db()
-        
         args = event.pattern_match.string.split()
+        
         if len(args) < 2:
-            await event.edit("Usage: `.count number`")
-            return
+            return await event.edit("Usage: `.count 5`")
         
         try:
             count = int(args[1])
-            if count < 1:
-                await event.edit("❌ Minimum 1")
-                return
-            if count > 50:
-                await event.edit("❌ Maximum 50")
-                return
+            if count < 1 or count > 50:
+                return await event.edit("❌ Range: 1-50")
             
             db["count"] = count
             save_db(db)
-            await event.edit(f"✅ Raid count: `{count}`")
-        except ValueError:
-            await event.edit("❌ Invalid number")
-        
-        await asyncio.sleep(3)
-        try:
-            await event.delete()
-        except:
-            pass
-    
-    
-    # ------------------ Auto Raid Handler ------------------
-    @client.on(events.NewMessage(incoming=True))
-    async def auto_raid(event):
-        """Raid when target sends ANY message"""
-        if not event.is_group and not event.is_channel:
-            return
-        if event.out:
-            return
-        if not event.sender:
-            return
-        
-        db = load_db()
-        
-        user_id = str(event.sender_id)
-        username = event.sender.username or ""
-        
-        if user_id not in db["users"] and username not in db["users"]:
-            return
-        
-        for i in range(db["count"]):
-            try:
-                text = get_next_reply(db)
-                await client.send_action(event.chat_id, SendMessageTypingAction())
-                await asyncio.sleep(random.randint(2, 5))
-                await event.reply(text)
-            except Exception as e:
-                logger.error(f"Raid error: {e}")
-                break
-    
-    
-    logger.info("✅ Raid plugin loaded (commands: .raid, .draid, .count)")
-
-
-load = load_raid
-init = load_raid
+            await event.edit(f"✅ Count: `{count}`")
