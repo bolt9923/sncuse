@@ -9,6 +9,7 @@ from telethon.tl.types import User
 
 DB_FILE = "reraid_db.json"
 
+
 def load_db():
 
     if not os.path.exists(DB_FILE):
@@ -48,15 +49,15 @@ def save_db():
 
 db = load_db()
 
-# ================= MAIN FUNCTION ================= #
+# ================= LOAD FUNCTION ================= #
 
 def load_reraid(client):
 
-    print("✅ Reply Raid Loaded")
+    print("✅ Reply Raid Plugin Loaded")
 
     # ================= ADD USER ================= #
 
-    @client.on(events.NewMessage(pattern=r"\.reraid (.+)"))
+    @client.on(events.NewMessage(pattern=r"^\.reraid (.+)"))
     async def add_reraid(event):
 
         try:
@@ -76,16 +77,16 @@ def load_reraid(client):
             save_db()
 
             await event.reply(
-                f"✅ Added @{user} to reply raid"
+                f"✅ Added @{user} to reply raid list"
             )
 
         except Exception as e:
 
-            print("RERAID ADD ERROR:", e)
+            print("ADD RERAID ERROR:", e)
 
     # ================= REMOVE USER ================= #
 
-    @client.on(events.NewMessage(pattern=r"\.delreraid (.+)"))
+    @client.on(events.NewMessage(pattern=r"^\.delreraid (.+)"))
     async def del_reraid(event):
 
         try:
@@ -112,9 +113,9 @@ def load_reraid(client):
 
             print("DEL RERAID ERROR:", e)
 
-    # ================= LIST ================= #
+    # ================= USER LIST ================= #
 
-    @client.on(events.NewMessage(pattern=r"\.rlist"))
+    @client.on(events.NewMessage(pattern=r"^\.rlist$"))
     async def rlist(event):
 
         try:
@@ -139,7 +140,7 @@ def load_reraid(client):
 
     # ================= SET COUNT ================= #
 
-    @client.on(events.NewMessage(pattern=r"\.rcount (\d+)"))
+    @client.on(events.NewMessage(pattern=r"^\.rcount (\\d+)$"))
     async def set_count(event):
 
         try:
@@ -147,6 +148,12 @@ def load_reraid(client):
             count = int(
                 event.pattern_match.group(1)
             )
+
+            if count > 50:
+
+                return await event.reply(
+                    "❌ Max limit is 50"
+                )
 
             db["count"] = count
 
@@ -162,7 +169,7 @@ def load_reraid(client):
 
     # ================= SET REPLY ================= #
 
-    @client.on(events.NewMessage(pattern=r"\.rreply (.+)"))
+    @client.on(events.NewMessage(pattern=r"^\.rreply (.+)"))
     async def set_reply(event):
 
         try:
@@ -183,7 +190,7 @@ def load_reraid(client):
 
     # ================= ENABLE / DISABLE ================= #
 
-    @client.on(events.NewMessage(pattern=r"\.rraid (on|off)"))
+    @client.on(events.NewMessage(pattern=r"^\.rraid (on|off)$"))
     async def toggle_rraid(event):
 
         try:
@@ -210,45 +217,58 @@ def load_reraid(client):
 
         except Exception as e:
 
-            print("RRAID TOGGLE ERROR:", e)
+            print("TOGGLE ERROR:", e)
 
     # ================= AUTO REPLY RAID ================= #
 
-    @client.on(events.NewMessage)
+    @client.on(events.NewMessage(incoming=True))
     async def auto_reply_raid(event):
 
         try:
 
+            # ENABLE CHECK
             if not db["enabled"]:
                 return
 
+            # GROUP ONLY
             if not event.is_group:
                 return
 
+            # MUST BE REPLY
             if not event.is_reply:
                 return
 
+            # GET SENDER
             sender = await event.get_sender()
 
             if not sender:
                 return
 
+            # ONLY USERS
             if not isinstance(sender, User):
                 return
 
+            # USERNAME
             username = ""
 
             if sender.username:
                 username = sender.username.lower().strip()
 
+            # USER ID
             user_id = str(sender.id)
 
-            matched = False
-
+            # TARGETS
             targets = [
                 str(x).lower().strip()
                 for x in db["users"]
             ]
+
+            print("USERNAME:", username)
+            print("USER ID:", user_id)
+            print("TARGETS:", targets)
+
+            # MATCH CHECK
+            matched = False
 
             if username in targets:
                 matched = True
@@ -259,16 +279,19 @@ def load_reraid(client):
             if not matched:
                 return
 
-            print("🔥 RERAID TARGET DETECTED")
+            print("🔥 TARGET DETECTED")
 
-            for _ in range(db["count"]):
+            # REPLY RAID
+            for _ in range(
+                int(db["count"])
+            ):
 
                 await event.reply(
                     db["reply"]
                 )
 
-                await asyncio.sleep(0.3)
+                await asyncio.sleep(0.5)
 
         except Exception as e:
 
-            print("AUTO RERAID ERROR:", e)
+            print("AUTO REPLY ERROR:", e)
