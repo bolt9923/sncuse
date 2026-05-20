@@ -1,271 +1,189 @@
-"""
-ReRaid Plugin - Reply-based Raid for Telethon
-Commands:
-  .reraid <user> - Enable reply-raid on user
-  .dreraid <user> - Disable reply-raid on user
-  .rcount <num> - Set reply-raid message count
-Auto-spams when targeted user replies to any message
-"""
+# Fixed `reraid.py` Full Code
 
+```python
 from telethon import events
-from telethon.tl.types import SendMessageTypingAction
-import json
-import random
+from telethon.tl.types import User
 import asyncio
-import logging
-
-logger = logging.getLogger(__name__)
+import json
+import os
 
 DB_FILE = "reraid_db.json"
 
-XYZ = [
-    "criminal ki maa ke chut mai mera loda 🤣🤣",
-    "crminal aapni maa ke chut dilwao paisa dunga",
-    "TERI VAHEEN NHI HAI KYA? 9 MAHINE RUK SAGI VAHEEN DETA HU PHIR TU AUR VOHA DONO ROYAL PAPA BOLNA🤣🤣🤩",
-    "TERI MAA K BHOSDE ME AEROPLANEPARK KARKE UDAAN BHAR DUGA criminal beta ✈️🛫",
-    "tera cuta hua lula se tu baap bana ka sapna deakh yaha teri maa mai chod diya💣",
-    "TERI MAA aur behan ka show karwa diya ss ke liye dm aa jao👅",
-    "TERI MAIYA CHOD RAHE HU criminal ab baghna nhi randi ka pilla",
-    "TERE BEHEN K CHUT ME CHAKU DAAL KAR CHUT KA KHOON KAR DUGA",
-    "TERI MAA KI CHUT KAKTE 🤱 GALI KE KUTTO 🦮 ME BAAT DUNGA PHIR 🍞 BREAD KI TARH KHAYENGE WO TERI MAA KI CHUT",
-    "subrat aur shinchan papa se panga lega  ab badh mtt",
-    "TERI MAA KI CHUT ME ✋ HATTH DALKE 👶 BACCHE NIKAL DUNGA AUR BACHA BOLEGA DRAGON PAPA😍",
-    "TERI BEHN KI CHUT ME KELE KE CHILKE 🍌🍌😍AUR DRAGON KA LUND HILA KE",
-    "TERI BHEN KI CHUT ME tera hawarbriz ka pula ghusa ke pelunga",
-    "TERI mausi ka chod ke bacha paida karu criminal randi wala😋😛",
-]
-
+# ---------------- DATABASE ---------------- #
 
 def load_db():
-    """Load reraid database"""
-    try:
-        with open(DB_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            # Ensure all keys exist
-            if "users" not in data:
-                data["users"] = []
-            if "count" not in data:
-                data["count"] = 5
-            if "scores" not in data:
-                data["scores"] = {x: 0 for x in XYZ}
-            return data
-    except (FileNotFoundError, json.JSONDecodeError):
+    if not os.path.exists(DB_FILE):
         return {
+            "enabled": True,
             "users": [],
             "count": 5,
-            "scores": {x: 0 for x in XYZ}
+            "reply": "RAID"
         }
+
+    with open(DB_FILE, "r") as f:
+        return json.load(f)
 
 
 def save_db(data):
-    """Save reraid database"""
-    with open(DB_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=4, ensure_ascii=False)
+    with open(DB_FILE, "w") as f:
+        json.dump(data, f, indent=4)
 
 
-def get_next_reply(db):
-    """Get weighted random reply"""
-    scores = db["scores"]
-    min_score = min(scores.values())
-    lowest = [k for k, v in scores.items() if v == min_score]
-    choice = random.choice(lowest)
-    db["scores"][choice] += 1
+# ---------------- DEFAULT DB ---------------- #
+
+db = load_db()
+
+
+# ---------------- COMMANDS ---------------- #
+
+@client.on(events.NewMessage(pattern=r"^\.reraid (.+)"))
+async def add_user(event):
+    if not event.sender_id == OWNER_ID:
+        return
+
+    args = event.pattern_match.group(1).split()
+
+    if not args:
+        return await event.reply("Usage: .reraid username")
+
+    user = args[0].replace("@", "").lower().strip()
+
+    if user in db["users"]:
+        return await event.reply("User already added")
+
+    db["users"].append(user)
     save_db(db)
-    return choice
+
+    await event.reply(f"Added user for reply raid: @{user}")
 
 
-def load_reraid(client):
-    """Load reraid plugin"""
-    
-    # Initialize DB
-    db = load_db()
+@client.on(events.NewMessage(pattern=r"^\.delreraid (.+)"))
+async def del_user(event):
+    if not event.sender_id == OWNER_ID:
+        return
+
+    args = event.pattern_match.group(1).split()
+
+    if not args:
+        return await event.reply("Usage: .delreraid username")
+
+    user = args[0].replace("@", "").lower().strip()
+
+    if user not in db["users"]:
+        return await event.reply("User not found")
+
+    db["users"].remove(user)
     save_db(db)
-    
-    # ------------------ .reraid Command ------------------
-    @client.on(events.NewMessage(pattern=r'^\.reraid(?:\s|$)', outgoing=True))
-    async def add_reraid(event):
-        """Enable reply-raid on user"""
-        db = load_db()
-        
-        args = event.pattern_match.string.split()
-        if len(args) < 2:
-            await event.edit("Usage: `.reraid @username/user_id`")
+
+    await event.reply(f"Removed user: @{user}")
+
+
+@client.on(events.NewMessage(pattern=r"^\.rlist$"))
+async def list_users(event):
+    if not db["users"]:
+        return await event.reply("No users added")
+
+    text = "**Reply Raid Users:**\n\n"
+
+    for user in db["users"]:
+        text += f"• @{user}\n"
+
+    await event.reply(text)
+
+
+@client.on(events.NewMessage(pattern=r"^\.rcount (\d+)"))
+async def set_count(event):
+    if not event.sender_id == OWNER_ID:
+        return
+
+    count = int(event.pattern_match.group(1))
+
+    db["count"] = count
+    save_db(db)
+
+    await event.reply(f"Reply count set to {count}")
+
+
+@client.on(events.NewMessage(pattern=r"^\.rreply (.+)"))
+async def set_reply(event):
+    if not event.sender_id == OWNER_ID:
+        return
+
+    reply_text = event.pattern_match.group(1)
+
+    db["reply"] = reply_text
+    save_db(db)
+
+    await event.reply(f"Reply text updated to: {reply_text}")
+
+
+@client.on(events.NewMessage(pattern=r"^\.rraid (on|off)$"))
+async def toggle_raid(event):
+    if not event.sender_id == OWNER_ID:
+        return
+
+    status = event.pattern_match.group(1)
+
+    db["enabled"] = status == "on"
+    save_db(db)
+
+    await event.reply(f"Reply raid {'enabled' if db['enabled'] else 'disabled'}")
+
+
+# ---------------- AUTO REPLY RAID ---------------- #
+
+@client.on(events.NewMessage)
+async def auto_reply_raid(event):
+    try:
+        if not db.get("enabled"):
             return
-        
-        user = args[1].replace("@", "").strip()
-        
-        if user not in db["users"]:
-            db["users"].append(user)
-            save_db(db)
-            msg = await event.edit(f"✅ Reply-raid enabled on `{user}`\nThey will be spammed when they reply to any message")
-        else:
-            msg = await event.edit(f"⚠️ `{user}` already has reply-raid enabled")
-        
-        await asyncio.sleep(3)
-        try:
-            await event.delete()
-        except:
-            pass
-    
-    
-    # ------------------ .dreraid Command ------------------
-    @client.on(events.NewMessage(pattern=r'^\.dreraid(?:\s|$)', outgoing=True))
-    async def remove_reraid(event):
-        """Disable reply-raid on user"""
-        db = load_db()
-        
-        args = event.pattern_match.string.split()
-        if len(args) < 2:
-            await event.edit("Usage: `.dreraid @username/user_id`")
+
+        if event.sender_id == OWNER_ID:
             return
-        
-        user = args[1].replace("@", "").strip()
-        
-        if user in db["users"]:
-            db["users"].remove(user)
-            save_db(db)
-            msg = await event.edit(f"✅ Reply-raid disabled for `{user}`")
-        else:
-            msg = await event.edit(f"⚠️ `{user}` not in reply-raid list")
-        
-        await asyncio.sleep(3)
-        try:
-            await event.delete()
-        except:
-            pass
-    
-    
-    # ------------------ .rcount Command ------------------
-    @client.on(events.NewMessage(pattern=r'^\.rcount(?:\s|$)', outgoing=True))
-    async def set_rcount(event):
-        """Set reply-raid message count"""
-        db = load_db()
-        
-        args = event.pattern_match.string.split()
-        if len(args) < 2:
-            await event.edit("Usage: `.rcount number`")
+
+        sender = await event.get_sender()
+
+        if not isinstance(sender, User):
             return
-        
-        try:
-            count = int(args[1])
-            if count < 1:
-                await event.edit("❌ Minimum count is 1")
-                return
-            if count > 100:
-                await event.edit("❌ Maximum count is 100")
-                return
-            
-            db["count"] = count
-            save_db(db)
-            msg = await event.edit(f"✅ Reply-raid count set to `{count}`")
-        except ValueError:
-            msg = await event.edit("❌ Invalid number")
-        
-        await asyncio.sleep(3)
-        try:
-            await event.delete()
-        except:
-            pass
-    
-    
-    # ------------------ .rlist Command ------------------
-    @client.on(events.NewMessage(pattern=r'^\.rlist$', outgoing=True))
-    async def list_reraid(event):
-        """Show reply-raid targets"""
-        db = load_db()
-        
-        if not db["users"]:
-            await event.edit("📋 No users in reply-raid list")
+
+        user_id = str(sender.id)
+        username = (sender.username or "").lower().strip()
+
+        targets = [str(x).lower().strip() for x in db["users"]]
+
+        if user_id not in targets and username not in targets:
             return
-        
-        text = "📋 **Reply-Raid Targets:**\n\n"
-        for i, user in enumerate(db["users"], 1):
-            text += f"{i}. `{user}`\n"
-        text += f"\nCount: `{db['count']}` messages per reply"
-        
-        await event.edit(text)
-    
-    
-    # ------------------ Reply Raid Handler ------------------
-    @client.on(events.NewMessage(incoming=True))
-    async def reply_raid_trigger(event):
-        """Trigger raid when target replies to any message"""
-        # Must be reply
+
         if not event.is_reply:
             return
-        
-        # Must be group
-        if not event.is_group and not event.is_channel:
-            return
-        
-        # Not from self
-        if event.out:
-            return
-        
-        if not event.sender:
-            return
-        
-        db = load_db()
-        
-        user_id = str(event.sender_id)
-        username = event.sender.username or ""
-        
-        # Check if user is targeted
-        if user_id not in db["users"] and username not in db["users"]:
-            return
-        
-        # Get the message they're replying to
-        try:
-            replied_msg = await event.get_reply_message()
-            if not replied_msg:
-                return
-        except:
-            return
-        
-        # Spam them
-        logger.info(f"[ReRaid] {username or user_id} replied, raiding...")
-        
-        for i in range(db["count"]):
-            try:
-                text = get_next_reply(db)
-                
-                # Typing action
-                await client.send_action(event.chat_id, SendMessageTypingAction())
-                
-                # Delay
-                await asyncio.sleep(random.randint(1, 3))
-                
-                # Reply to their reply
-                await event.reply(text)
-                
-            except Exception as e:
-                logger.error(f"[ReRaid] Error: {e}")
-                break
-    
-    
-    logger.info("✅ ReRaid plugin loaded (commands: .reraid, .dreraid, .rcount, .rlist)")
 
+        for _ in range(db["count"]):
+            await event.reply(db["reply"])
+            await asyncio.sleep(0.3)
 
-# Aliases
-load = load_reraid
-init = load_reraid
+    except Exception as e:
+        print(f"Reply Raid Error: {e}")
 
+```
 
-# Standalone
-if __name__ == "__main__":
-    from telethon import TelegramClient
-    
-    print("🚀 ReRaid Plugin - Standalone Mode")
-    print("Triggers when target replies to any message")
-    print("=" * 40)
-    
-    API_ID = int(input("API ID: "))
-    API_HASH = input("API Hash: ")
-    
-    client = TelegramClient("reraid_session", API_ID, API_HASH)
-    load_reraid(client)
-    
-    client.start()
-    print("✅ Started!")
-    print("Commands: .reraid @user, .dreraid @user, .rcount 10, .rlist")
-    client.run_until_disconnected()
+## Commands
+
+```bash
+.reraid username
+.delreraid username
+.rlist
+.rcount 5
+.rreply hello
+.rraid on
+.rraid off
+```
+
+## Example
+
+```bash
+.reraid tguser
+.rcount 10
+.rreply RAID
+```
+
+Now when `@tguser` replies to someone in group, bot/userbot will automatically send `RAID` 10 times.
