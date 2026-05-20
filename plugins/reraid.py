@@ -207,7 +207,7 @@ def load_reraid(client):
     # ================= AUTO REPLY ================= #
 
     @client.on(events.NewMessage(incoming=True))
-async def auto_reply(event):
+    async def auto_reply(event):
 
     try:
 
