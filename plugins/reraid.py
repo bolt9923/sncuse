@@ -4,17 +4,21 @@ import asyncio
 import json
 import os
 
+# ================= IMPORT YOUR CLIENT ================= #
+
+from SNC import bot
+
 # ================= CONFIG ================= #
 
-DB_FILE = "reraid_db.json"
-
-# Your owner ID
 OWNER_ID = 123456789
+DB_FILE = "reraid_db.json"
 
 # ================= DATABASE ================= #
 
-def load_db():
+def load_reraid():
+
     if not os.path.exists(DB_FILE):
+
         data = {
             "enabled": True,
             "users": [],
@@ -40,16 +44,16 @@ def load_db():
         }
 
 
-def save_db():
+def save_reraid():
     with open(DB_FILE, "w") as f:
         json.dump(db, f, indent=4)
 
 
-db = load_db()
+db = load_reraid()
 
 # ================= ADD USER ================= #
 
-@client.on(events.NewMessage(pattern=r"^\.reraid(?: |$)(.*)"))
+@bot.on(events.NewMessage(pattern=r"^\.reraid(?: |$)(.*)"))
 async def add_reraid(event):
 
     if event.sender_id != OWNER_ID:
@@ -68,14 +72,15 @@ async def add_reraid(event):
         return await event.reply("User already added.")
 
     db["users"].append(user)
-    save_db()
+
+    save_reraid()
 
     await event.reply(f"Added @{user} to reply raid list.")
 
 # ================= REMOVE USER ================= #
 
-@client.on(events.NewMessage(pattern=r"^\.delreraid(?: |$)(.*)"))
-async def remove_reraid(event):
+@bot.on(events.NewMessage(pattern=r"^\.delreraid(?: |$)(.*)"))
+async def del_reraid(event):
 
     if event.sender_id != OWNER_ID:
         return
@@ -93,13 +98,14 @@ async def remove_reraid(event):
         return await event.reply("User not found.")
 
     db["users"].remove(user)
-    save_db()
+
+    save_reraid()
 
     await event.reply(f"Removed @{user}")
 
 # ================= LIST USERS ================= #
 
-@client.on(events.NewMessage(pattern=r"^\.rlist$"))
+@bot.on(events.NewMessage(pattern=r"^\.rlist$"))
 async def list_reraid(event):
 
     if event.sender_id != OWNER_ID:
@@ -117,8 +123,8 @@ async def list_reraid(event):
 
 # ================= SET COUNT ================= #
 
-@client.on(events.NewMessage(pattern=r"^\.rcount(?: |$)(\\d+)"))
-async def set_count(event):
+@bot.on(events.NewMessage(pattern=r"^\.rcount (\\d+)$"))
+async def set_rcount(event):
 
     if event.sender_id != OWNER_ID:
         return
@@ -126,37 +132,39 @@ async def set_count(event):
     count = int(event.pattern_match.group(1))
 
     if count > 50:
-        return await event.reply("Max limit is 50.")
+        return await event.reply("Maximum limit is 50.")
 
     db["count"] = count
-    save_db()
+
+    save_reraid()
 
     await event.reply(f"Reply count set to {count}")
 
 # ================= SET REPLY ================= #
 
-@client.on(events.NewMessage(pattern=r"^\.rreply(?: |$)(.*)"))
-async def set_reply(event):
+@bot.on(events.NewMessage(pattern=r"^\.rreply(?: |$)(.*)"))
+async def set_rreply(event):
 
     if event.sender_id != OWNER_ID:
         return
 
-    text = event.pattern_match.group(1)
+    text = event.pattern_match.group(1).strip()
 
     if not text:
         return await event.reply(
-            "Usage:\n.rreply text"
+            "Usage:\n.rreply message"
         )
 
     db["reply"] = text
-    save_db()
+
+    save_reraid()
 
     await event.reply(f"Reply message updated:\n{text}")
 
 # ================= ENABLE / DISABLE ================= #
 
-@client.on(events.NewMessage(pattern=r"^\.rraid(?: |$)(on|off)$"))
-async def toggle_reraid(event):
+@bot.on(events.NewMessage(pattern=r"^\.rraid (on|off)$"))
+async def toggle_rraid(event):
 
     if event.sender_id != OWNER_ID:
         return
@@ -165,17 +173,19 @@ async def toggle_reraid(event):
 
     if mode == "on":
         db["enabled"] = True
-        save_db()
+        save_reraid()
+
         return await event.reply("Reply raid enabled.")
 
     db["enabled"] = False
-    save_db()
+
+    save_reraid()
 
     await event.reply("Reply raid disabled.")
 
 # ================= AUTO REPLY RAID ================= #
 
-@client.on(events.NewMessage(incoming=True))
+@bot.on(events.NewMessage(incoming=True))
 async def auto_reply_raid(event):
 
     try:
@@ -201,6 +211,7 @@ async def auto_reply_raid(event):
             return
 
         username = (sender.username or "").lower().strip()
+
         user_id = str(sender.id)
 
         targets = [str(x).lower().strip() for x in db["users"]]
@@ -215,6 +226,4 @@ async def auto_reply_raid(event):
             await asyncio.sleep(0.4)
 
     except Exception as e:
-        print("Reply Raid Error:", e)
-
-# ================= END ================= #
+        print(f"Reply Raid Error: {e}")
