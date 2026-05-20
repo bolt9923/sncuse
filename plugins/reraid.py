@@ -206,63 +206,67 @@ def load_reraid(client):
 
     # ================= AUTO REPLY ================= #
 
-    @client.on(events.NewMessage)
-    async def auto_reply(event):
+    @client.on(events.NewMessage(incoming=True))
+async def auto_reply(event):
 
-        try:
+    try:
 
-            if not db["enabled"]:
-                return
+        # ENABLE CHECK
+        if not db["enabled"]:
+            return
 
-            if not event.is_group:
-                return
+        # GROUP ONLY
+        if not event.is_group:
+            return
 
-            if not event.is_reply:
-                return
+        # REPLY ONLY
+        if not event.is_reply:
+            return
 
-            sender = await event.get_sender()
+        # GET SENDER
+        sender = await event.get_sender()
 
-            if not sender:
-                return
+        if not sender:
+            return
 
-            username = ""
+        # USERNAME
+        username = ""
 
-            if sender.username:
+        if sender.username:
+            username = sender.username.lower().strip()
 
-                username = (
-                    sender.username
-                    .lower()
-                    .strip()
-                )
+        # USER ID
+        user_id = str(sender.id)
 
-            user_id = str(sender.id)
+        # TARGETS
+        targets = [
+            str(x).lower().strip()
+            for x in db["users"]
+        ]
 
-            targets = [
-                str(x).lower().strip()
-                for x in db["users"]
-            ]
+        print("USERNAME:", username)
+        print("USER_ID:", user_id)
+        print("TARGETS:", targets)
 
-            print("USERNAME:", username)
-            print("USER_ID:", user_id)
-            print("TARGETS:", targets)
+        # MATCH CHECK
+        if (
+            username not in targets
+            and
+            user_id not in targets
+        ):
+            return
 
-            if (
-                username not in targets
-                and
-                user_id not in targets
-            ):
-                return
+        print("🔥 TARGET DETECTED")
 
-            print("🔥 TARGET DETECTED")
+        # AUTO REPLY
+        for _ in range(int(db["count"])):
 
-            for _ in range(db["count"]):
+            text = get_reply()
 
-                await event.reply(
-                    get_reply()
-                )
+            await event.reply(text)
 
-                await asyncio.sleep(0.5)
+            await asyncio.sleep(0.5)
 
-        except Exception as e:
+    except Exception as e:
 
-            print("AUTO REPLY ERROR:", e)
+        print("AUTO REPLY ERROR:", e)
